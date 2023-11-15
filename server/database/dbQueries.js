@@ -25,6 +25,7 @@ function deleteUser(username){
 }
 
 
+
 /// CRUD for cards
 
 function getAllCards(){

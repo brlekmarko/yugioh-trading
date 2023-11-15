@@ -9,6 +9,8 @@ import LoginPage from './pages/loginPage/loginPage';
 import NotFoundPage from './pages/notFoundPage/notFoundPage';
 import { getUser, logoutUser } from './apiCalls/userApi';
 import RegisterPage from './pages/registerPage/registerPage';
+import AdminPage from './pages/adminPage/adminPage';
+import ProfilePage from './pages/profilePage/profilePage';
 
 function App() {
 
@@ -45,6 +47,8 @@ function App() {
         {user ? <>
           <span className="left-align-header">
             <a className="header-link" href="/">Home</a>
+            {user.admin && <a className="header-link" href="/admin">Admin</a>}
+            <a className="header-link" href="/profile">Profile</a>
           </span>
           <span className="right-align-header">
             {user.first_name + ' ' + user.last_name}
@@ -74,6 +78,14 @@ function App() {
         <Route
             path={"/register"}
             element={<RegisterPage/>}
+        />
+        <Route
+            path={"/profile"}
+            element={<ProfilePage />}
+        />
+        <Route
+            path={"/admin"}
+            element={<AdminPage />}
         />
         <Route
             path="*"
