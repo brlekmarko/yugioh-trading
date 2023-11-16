@@ -28,7 +28,7 @@ export async function deleteCard(card : Card){
 
 
 // /cards/:id
-export async function getCard(id : number){
+export async function getCard(id : number|string){
     let res : any = await axios.get(url + "/cards/" + id);
     return res.data;
 }
@@ -46,5 +46,18 @@ export async function addCardToUser(username : string, card : Card){
 
 export async function removeCardFromUser(username : string, card : Card){
     let res : any = await axios.delete(url + "/users/" + username + "/cards/" + card.id);
+    return res.data;
+}
+
+
+// pack opening
+
+export async function getTimeOnServer(){
+    let res : any = await axios.get(url + "/current-time");
+    return res.data;
+}
+
+export async function openPack(){
+    let res : any = await axios.get(url + "/open-pack");
     return res.data;
 }

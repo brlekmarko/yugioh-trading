@@ -99,7 +99,8 @@ export default function AdminPage(){
                 <div style={{marginBottom: "10px"}}>
                     <InputText placeholder="Search" value={searchUsers} onChange={updateSearchUsers}/>
                 </div>
-                <DataTable value={users.filter(user => user.username.toLowerCase().includes(searchUsers.toLowerCase()))} scrollable scrollHeight="500px">
+                <DataTable value={users.filter(user => user.username.toLowerCase().includes(searchUsers.toLowerCase()))} scrollable scrollHeight="300px"
+                    style={{border: "1px solid black"}}>
                 <Column header="Username" body={(rowData:any) =>
                         <a href={"/profile/" + rowData.username} target="_blank">{rowData.username}</a>
                     }></Column>
@@ -121,10 +122,9 @@ export default function AdminPage(){
                 <div style={{marginBottom: "10px", marginTop: "10px"}}>
                     <InputText placeholder="Search" value={searchCards} onChange={updateSearchCards}/>
                 </div>
-                <DataTable value={cards.filter(card => card.name.toLowerCase().includes(searchCards.toLowerCase())).sort((a,b) => b.id - a.id)} 
-                            scrollable scrollHeight="500px">
+                <DataTable value={cards.filter(card => card.name.toLowerCase().includes(searchCards.toLowerCase())).sort((a,b) => b.id - a.id)}>
                     <Column header="Name" body={(rowData:any) =>
-                        <a href={"/cards/" + rowData.id} target="_blank">{rowData.name}</a>
+                        <a href={"/card/" + rowData.id} target="_blank">{rowData.name}</a>
                     }></Column>
                     <Column field="type" header="Type"></Column>
                     <Column field="description" header="Description"></Column>

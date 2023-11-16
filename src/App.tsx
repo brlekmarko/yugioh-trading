@@ -11,6 +11,7 @@ import { getUser, logoutUser } from './apiCalls/userApi';
 import RegisterPage from './pages/registerPage/registerPage';
 import AdminPage from './pages/adminPage/adminPage';
 import ProfilePage from './pages/profilePage/profilePage';
+import CardPage from './pages/cardPage/cardPage';
 
 function App() {
 
@@ -86,6 +87,10 @@ function App() {
         <Route
             path={"/admin"}
             element={<AdminPage />}
+        />
+        <Route
+            path={"/card/:id"}
+            element={<CardPage />}
         />
         <Route
             path="*"

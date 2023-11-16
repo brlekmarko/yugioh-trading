@@ -246,6 +246,12 @@ app.delete(url + "/cards/:id", async (req, res) => {
   }
 });
 
+app.get(url + "/cards/:id", async (req, res) => {
+  const id = req.params.id;
+  const card = await client.query(queries.getCard(id));
+  res.json({ success: true, card: card.rows[0] });
+});
+
 
 //////////////////////////////////////////////////////
 //////////////////////////////////////////////////////
@@ -300,6 +306,51 @@ app.delete(url + "/users/:username/cards/:id", async (req, res) => {
     res.json({ success: true });
   } catch (e) {
     console.log(e);
+    res.json({ success: false });
+  }
+});
+
+
+//////////////////////////////////////////////////////
+//////////////////////////////////////////////////////
+// pack opening
+
+app.get(url + "/current-time", (req, res) => {
+  res.json({ time: new Date().toISOString() });
+});
+
+app.get(url + "/open-pack", async (req, res) => {
+  if (!req.session.user) {
+    res.json({ success: false });
+    return;
+  }
+  client.query("BEGIN");
+  try{
+
+    const username = req.session.user.username;
+    const user = await client.query(queries.getUser(username));
+    const lastPackOpening = new Date(user.rows[0].last_pack_opening);
+    const now = new Date();
+    const timeSinceLastPackOpening = now.getTime() - lastPackOpening.getTime();
+    const hoursSinceLastPackOpening = timeSinceLastPackOpening / 1000 / 60 / 60;
+    if (hoursSinceLastPackOpening < 12) { // if less than 12 hours since last pack opening
+      res.json({ success: false });
+      return;
+    }
+    const cards = await client.query(queries.getAllCards());
+    const randomCard1 = cards.rows[Math.floor(Math.random() * cards.rows.length)]; // get random card
+    const randomCard2 = cards.rows[Math.floor(Math.random() * cards.rows.length)];
+    user.rows[0].last_pack_opening = now.toISOString();
+    await client.query(queries.addCardToUser(username, randomCard1));
+    await client.query(queries.addCardToUser(username, randomCard2));
+    await client.query(queries.updateUser(user.rows[0]));
+    req.session.user.last_pack_opening = now.toISOString();
+    await client.query("COMMIT");
+    res.json({ success: true, cards: [randomCard1, randomCard2] });
+  }
+  catch(e){
+    console.log(e);
+    await client.query("ROLLBACK");
     res.json({ success: false });
   }
 });
@@ -364,7 +415,6 @@ async function initializeOwnership(){
   }
 
 }
-
 
 
 
