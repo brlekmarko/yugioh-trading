@@ -30,6 +30,8 @@ app.use(cors());
 // endpoints
 const url = "/api";
 
+//////////////////////////////////////////////////////
+//////////////////////////////////////////////////////
 // login, logout, userinfo
 
 app.post(url + "/login", jsonParser, async (req, res) => {
@@ -63,6 +65,10 @@ app.get(url + "/user", (req, res) => {
   res.json({ success: true, user: req.session.user });
 });
 
+
+
+//////////////////////////////////////////////////////
+//////////////////////////////////////////////////////
 // users (CRUD)
 // GET, POST, PUT, DELETE
 
@@ -103,6 +109,9 @@ app.post(url + "/users", jsonParser, async (req, res) => {
     await client.query(queries.createUser(user)); // create user in db
     req.session.user = user;
     res.json({ success: true, user: user });
+
+    // give user Winged Kuriboh as a starter card
+    await client.query(queries.addCardToUserByName(username, "Winged Kuriboh"));
   } catch (e) {
     console.log(e);
     res.json({ success: false });
@@ -144,6 +153,150 @@ app.delete(url + "/users/:username", async (req, res) => {
   }
   try {
     await client.query(queries.deleteUser(username));
+    res.json({ success: true });
+  } catch (e) {
+    console.log(e);
+    res.json({ success: false });
+  }
+});
+
+app.get(url + "/users/:username", async (req, res) => {
+  const username = req.params.username;
+  // admin only, or user getting their own account
+  if (!req.session.user || (!req.session.user.admin && req.session.user.username !== username)) {
+    res.json({ success: false });
+    return;
+  }
+  const user = await client.query(queries.getUser(username));
+  res.json({ success: true, user: user.rows[0] });
+});
+
+
+
+//////////////////////////////////////////////////////
+//////////////////////////////////////////////////////
+// cards (CRUD)
+// GET, POST, PUT, DELETE
+
+app.get(url + "/cards", async (req, res) => {
+  const cards = await client.query(queries.getAllCards());
+  res.json({ success: true, cards: cards.rows });
+});
+
+app.post(url + "/cards", jsonParser, async (req, res) => {
+  // admin only
+  if (!req.session.user || !req.session.user.admin) {
+    res.json({ success: false });
+    return;
+  }
+  const { name, type, description, image } = req.body;
+  const card = {
+    name,
+    type,
+    description,
+    image
+  };
+  try {
+    const result = await client.query(queries.createCard(card));
+    res.json({ success: true, id: result.rows[0].id });
+  } catch (e) {
+    console.log(e);
+    res.json({ success: false });
+  }
+});
+
+app.put(url + "/cards", jsonParser, async (req, res) => {
+  // admin only
+  if (!req.session.user || !req.session.user.admin) {
+    res.json({ success: false });
+    return;
+  }
+  const { id, name, type, description, image } = req.body;
+  const card = {
+    id,
+    name,
+    type,
+    description,
+    image
+  };
+  try {
+    await client.query(queries.updateCard(card));
+    res.json({ success: true });
+  } catch (e) {
+    console.log(e);
+    res.json({ success: false });
+  }
+});
+
+app.delete(url + "/cards/:id", async (req, res) => {
+  // admin only
+  if (!req.session.user || !req.session.user.admin) {
+    res.json({ success: false });
+    return;
+  }
+  const id = req.params.id;
+  try {
+    // need to first delete all ownerships of this card
+    await client.query(queries.deleteAllOwnershipsOfCard(id));
+    await client.query(queries.deleteCard(id));
+    res.json({ success: true });
+  } catch (e) {
+    console.log(e);
+    res.json({ success: false });
+  }
+});
+
+
+//////////////////////////////////////////////////////
+//////////////////////////////////////////////////////
+// users/username/cards
+// GET, POST, DELETE
+
+app.get(url + "/users/:username/cards", async (req, res) => {
+  const username = req.params.username;
+  // admin only, or user getting their own cards
+  if (!req.session.user || (!req.session.user.admin && req.session.user.username !== username)) {
+    res.json({ success: false });
+    return;
+  }
+  const cards = await client.query(queries.getAllUserCards(username));
+  res.json({ success: true, cards: cards.rows });
+});
+
+app.post(url + "/users/:username/cards", jsonParser, async (req, res) => {
+  const username = req.params.username;
+  // admin only
+  if (!req.session.user || !req.session.user.admin) {
+    res.json({ success: false });
+    return;
+  }
+
+  const { id } = req.body;
+  try {
+    // check if card exists
+    const card = await client.query(queries.getCard(id));
+    if (card.rows.length === 0) {
+      res.json({ success: false });
+      return;
+    }
+    await client.query(queries.addCardToUser(username, id));
+    res.json({ success: true });
+  } catch (e) {
+    console.log(e);
+    res.json({ success: false });
+  }
+});
+
+app.delete(url + "/users/:username/cards/:id", async (req, res) => {
+  const username = req.params.username;
+  const id = req.params.id;
+  // admin only, or user deleting their own card
+  if (!req.session.user || (!req.session.user.admin && req.session.user.username !== username)) {
+    res.json({ success: false });
+    return;
+  }
+  try {
+    await client.query(queries.removeCardFromUser(username, id));
     res.json({ success: true });
   } catch (e) {
     console.log(e);

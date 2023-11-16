@@ -48,7 +48,7 @@ function App() {
           <span className="left-align-header">
             <a className="header-link" href="/">Home</a>
             {user.admin && <a className="header-link" href="/admin">Admin</a>}
-            <a className="header-link" href="/profile">Profile</a>
+            <a className="header-link" href={"/profile/" + user.username}>Profile</a>
           </span>
           <span className="right-align-header">
             {user.first_name + ' ' + user.last_name}
@@ -80,7 +80,7 @@ function App() {
             element={<RegisterPage/>}
         />
         <Route
-            path={"/profile"}
+            path={"/profile/:username"}
             element={<ProfilePage />}
         />
         <Route

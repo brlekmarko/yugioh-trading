@@ -36,3 +36,8 @@ export async function deleteUser(username: string){
     let res : any = await axios.delete(url + "/users/" + username);
     return res.data;
 }
+
+export async function getUserByUsername(username: string){
+    let res : any = await axios.get(url + "/users/" + username);
+    return res.data;
+}

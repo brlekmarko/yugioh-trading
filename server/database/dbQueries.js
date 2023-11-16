@@ -71,6 +71,10 @@ function removeCardFromUser(username, id){
     return `DELETE FROM OWNERSHIP WHERE username = '${username}' AND id_card = ${id}`;
 }
 
+function deleteAllOwnershipsOfCard(id){
+    return `DELETE FROM ownership WHERE id_card = ${id}`;
+}
+
 // trade offers
 
 function getAllTradeOffers(){
@@ -148,6 +152,7 @@ module.exports = {
     addCardToUser,
     addCardToUserByName,
     removeCardFromUser,
+    deleteAllOwnershipsOfCard,
     getAllTradeOffers,
     getTradeOffer,
     getWantedCardsForTradeOffer,

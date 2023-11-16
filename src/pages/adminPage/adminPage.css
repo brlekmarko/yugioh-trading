@@ -1,3 +1,39 @@
 .admin-actions button{
     margin-right: 10px;
+    margin-bottom: 5px;
+    margin-top: 5px;
+}
+
+.admin-create-card{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.admin-create-card-details{
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.admin-create-card-details input, .admin-create-card-details textarea{
+    margin-bottom: 10px;
+    width: 75%;
+}
+
+.admin-create-card-buttons{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.admin-create-card-buttons button{
+    margin-right: 5px;
+    margin-left: 5px;
+    margin-bottom: 5px;
+    margin-top: 15px;
 }
