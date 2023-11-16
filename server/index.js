@@ -8,6 +8,7 @@ const jsonParser = bodyParser.json();
 const sessions = require("express-session");
 const cookieParser = require("cookie-parser");
 const crypto = require("crypto");
+const initialDb = require("./database/initialDb");
 
 
 app.use(cookieParser());
@@ -151,44 +152,6 @@ app.delete(url + "/users/:username", async (req, res) => {
 });
 
 
-// app.post("/api/createTournament", jsonParser, async (req, res) => {
-//   client.query("BEGIN");
-//   try{
-//     const tournament = req.body;
-//     if (tournament.natjecatelji.length < 4 || tournament.natjecatelji.length > 8) {
-//       res.json({ id: -1 });
-//       return;
-//     }
-
-//     const dbres = await client.query(queries.newTournamentCreateNatjecanje(tournament));
-//     const id = dbres.rows[0].idnatjecanje;
-
-//     const natjecateljires = await client.query(queries.newTournamentCreateNatjecatelji(id, tournament));
-//     const natjecatelji = natjecateljires.rows;
-//     let natjecateljiIds = [];
-//     for(let i = 0; i < natjecatelji.length; i++){
-//         natjecateljiIds.push(natjecatelji[i].idnatjecatelj);
-//     }
-
-//     const idkolares = await client.query(queries.newTournamentCreateKola(id, tournament, natjecateljiIds));
-//     const idkola = idkolares.rows;
-//     let idkolaIds = [];
-//     for(let i = 0; i < idkola.length; i++){
-//         idkolaIds.push(idkola[i].idigra);
-//     }
-
-//     res.json({ id: id
-//     });
-//     client.query("COMMIT");
-//   }catch(e){
-//     client.query("ROLLBACK");
-//     console.log(e);
-//     res.json({ id: -1 });
-//   }
-
-// });
-
-
 
 app.use(express.static(path.join(__dirname, "..", "build")));
 app.use((req, res, next) => {
@@ -196,7 +159,65 @@ app.use((req, res, next) => {
 });
 
 
+async function initializeDatabase(){
+  // check if database is empty, if so, fill it with initial data
+  await client.query("BEGIN");
+  try{
+  
+    // users
+    const users = await client.query(queries.getAllUsers());
+    if (users.rows.length === 0) {
+      const initialUsers = initialDb.initialUsers();
+      for (let user of initialUsers) {
+        await client.query(queries.createUser(user));
+      }
+    }
+    // cards
+    const cards = await client.query(queries.getAllCards());
+    if (cards.rows.length === 0) {
+      const initialCards = initialDb.initialCards();
+      for (let card of initialCards) {
+        await client.query(queries.createCard(card));
+      }
+    }
+  
+    await client.query("COMMIT");
+  
+  } catch (e) {
+    console.log(e);
+    await client.query("ROLLBACK");
+  }
+}
+
+async function initializeOwnership(){
+  // check if ownership table is empty, if so, fill it with initial data
+  const ownerships = await client.query(queries.getAllOwnerships());
+  if(ownerships.rows.length > 0){
+    return;
+  }
+
+  await client.query("BEGIN");
+
+  try{
+
+    const initialOwnership = initialDb.initialOwnership();
+    for (let ownership of initialOwnership) {
+      await client.query(queries.addCardToUserByName(ownership.username, ownership.card_name));
+    }
+    await client.query("COMMIT")
+  }
+  catch(e){
+    await client.query("ROLLBACK");
+  }
+
+}
+
+
+
+
 // start express server on port 5000
-app.listen(5000, () => {
+app.listen(5000, async () => {
   console.log("server started on port 5000");
+  await initializeDatabase();
+  await initializeOwnership();
 });

@@ -29,38 +29,46 @@ function deleteUser(username){
 /// CRUD for cards
 
 function getAllCards(){
-    return "SELECT id, name, type, description FROM CARDS"
+    return "SELECT id, name, type, description, image FROM CARDS"
 }
 
 function getCard(id){
-    return "SELECT id, name, type, description FROM CARDS WHERE id = " + id;
+    return `SELECT id, name, type, description, image FROM CARDS WHERE id = ${id}`;
 }
 
 function createCard(card){
-    return "INSERT INTO CARDS (name, type, description) VALUES " +
-    "('" + card.name + "', '" + card.type + "', '" + card.description + "') RETURNING id;";
+    return `INSERT INTO CARDS (name, type, description, image) VALUES 
+    ($$${card.name}$$, $$${card.type}$$, $$${card.description}$$, $$${card.image}$$) RETURNING id`;
 }
 
 function updateCard(card){
-    return "UPDATE CARDS SET name = '" + card.name + "', type = '" + card.type + "', description = '" + card.description + "' WHERE id = " + card.id;
+    return `UPDATE CARDS SET name = $$${card.name}$$, type = $$${card.type}$$, description = $$${card.description}$$, image = $$${card.image}$$ WHERE id = ${card.id}`;
 }
 
 function deleteCard(id){
-    return "DELETE FROM CARDS WHERE id = " + id;
+    return `DELETE FROM CARDS WHERE id = ${id}`;
 }
 
 // combination of users and cards
 
+function getAllOwnerships(){
+    return "SELECT username, id_card FROM ownership";
+}
+
 function getAllUserCards(username){
-    return "SELECT id, name, type, description FROM CARDS WHERE id IN (SELECT id_card FROM OWNERSHIP WHERE username = '" + username + "')";
+    return `SELECT cards.id, cards.name, cards.type, cards.description, cards.image FROM ownership JOIN cards ON ownership.id_card = cards.id WHERE ownership.username = '${username}'`;
 }
 
 function addCardToUser(username, card){
-    return "INSERT INTO OWNERSHIP (username, id_card) VALUES ('" + username + "', " + card.id + ")";
+    return `INSERT INTO OWNERSHIP (username, id_card) VALUES ('${username}', ${card.id})`;
+}
+
+function addCardToUserByName(username, card_name){
+    return `INSERT INTO OWNERSHIP (username, id_card) VALUES ('${username}', (SELECT id FROM cards WHERE name = '${card_name}'))`;
 }
 
 function removeCardFromUser(username, id){
-    return "DELETE FROM OWNERSHIP WHERE username = '" + username + "' AND id_card = " + id + " LIMIT 1";
+    return `DELETE FROM OWNERSHIP WHERE username = '${username}' AND id_card = ${id}`;
 }
 
 // trade offers
@@ -70,32 +78,32 @@ function getAllTradeOffers(){
 }
 
 function getTradeOffer(id){
-    return "SELECT id, username, last_edit FROM trade_offers WHERE id = " + id;
+    return `SELECT id, username, last_edit FROM trade_offers WHERE id = ${id}`;
 }
 
 function getWantedCardsForTradeOffer(id){
-    return "SELECT wanting.id_card, cards.name, cards.type, cards.description FROM trade_offers JOIN wanting ON trade_offers.id = wanting.id_trade_offer " +
-    "JOIN cards ON wanting.id_card = cards.id WHERE trade_offers.id = " + id;
+    return `SELECT wanting.id_card, cards.name, cards.type, cards.description, cards.image FROM trade_offers JOIN wanting ON trade_offers.id = wanting.id_trade_offer ` +
+    `JOIN cards ON wanting.id_card = cards.id WHERE trade_offers.id = ${id}`;
 }
 
 function getOfferedCardsForTradeOffer(id){
-    return "SELECT offering.id_card, cards.name, cards.type, cards.description FROM trade_offers JOIN offering ON trade_offers.id = offering.id_trade_offer " +
-    "JOIN cards ON offering.id_card = cards.id WHERE trade_offers.id = " + id;
+    return `SELECT offering.id_card, cards.name, cards.type, cards.description, cards.image FROM trade_offers JOIN offering ON trade_offers.id = offering.id_trade_offer ` +
+    `JOIN cards ON offering.id_card = cards.id WHERE trade_offers.id = ${id}`;
 }
 
 function getTradeOffersForUser(username){
-    return "SELECT id, username, last_edit FROM trade_offers WHERE username = '" + username + "'";
+    return `SELECT id, username, last_edit FROM trade_offers WHERE username = '${username}'`;
 }
 
 function createTradeOffer(username){
-    return "INSERT INTO trade_offers (username, last_edit) VALUES ('" + username + "', CURRENT_TIMESTAMP) RETURNING id";
+    return `INSERT INTO trade_offers (username) VALUES ('${username}') RETURNING id`;
 }
 
 function createOfferingCards(id_trade_offer, id_cards){
     // id_cards is an array of ids
-    let query = "INSERT INTO offering (id_trade_offer, id_card) VALUES ";
+    let query = `INSERT INTO offering (id_trade_offer, id_card) VALUES `;
     for(let i = 0; i < id_cards.length; i++){
-        query += "(" + id_trade_offer + ", " + id_cards[i] + ")";
+        query += `(${id_trade_offer}, ${id_cards[i]})`;
         if(i < id_cards.length - 1){
             query += ", ";
         }
@@ -105,9 +113,9 @@ function createOfferingCards(id_trade_offer, id_cards){
 
 function createWantingCards(id_trade_offer, id_cards){
     // id_cards is an array of ids
-    let query = "INSERT INTO wanting (id_trade_offer, id_card) VALUES ";
+    let query = `INSERT INTO wanting (id_trade_offer, id_card) VALUES `;
     for(let i = 0; i < id_cards.length; i++){
-        query += "(" + id_trade_offer + ", " + id_cards[i] + ")";
+        query += `(${id_trade_offer}, ${id_cards[i]})`;
         if(i < id_cards.length - 1){
             query += ", ";
         }
@@ -117,7 +125,7 @@ function createWantingCards(id_trade_offer, id_cards){
 
 function deleteTradeOffer(id){
     // delete trade offer, delete offering, delete wanting
-    return "DELETE FROM trade_offers WHERE id = " + id + "; DELETE FROM offering WHERE id_trade_offer = " + id + "; DELETE FROM wanting WHERE id_trade_offer = " + id;
+    return `DELETE FROM trade_offers WHERE id = ${id}; DELETE FROM offering WHERE id_trade_offer = ${id}; DELETE FROM wanting WHERE id_trade_offer = ${id}`;
 }
 
 
@@ -135,8 +143,10 @@ module.exports = {
     createCard,
     updateCard,
     deleteCard,
+    getAllOwnerships,
     getAllUserCards,
     addCardToUser,
+    addCardToUserByName,
     removeCardFromUser,
     getAllTradeOffers,
     getTradeOffer,
