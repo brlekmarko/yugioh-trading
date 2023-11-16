@@ -47,6 +47,14 @@ export default function HomePage() {
         }
     }
 
+    function createTradeOfferClick(){
+        if(!user){
+            navigate('/login');
+            return;
+        }
+        console.log("create trade offer");
+    }
+
     useEffect(() => {
         // first fetch time on server
         // then fetch user
@@ -85,8 +93,15 @@ export default function HomePage() {
 
     return (
         <div className="HomePage">
-            <Button label="Open pack" onClick={OpenPack} disabled={remainingTime !== "Ready to open"} />
-            {remainingTime && <p>Time until next pack opening: {remainingTime}</p>}
+            <div className="pack-opening">
+                <Button label="Open pack" onClick={OpenPack} disabled={remainingTime !== "Ready to open"} />
+                {remainingTime && <p>Time until next pack opening: {remainingTime}</p>}
+            </div>
+            <div className="trade-offers">
+                <h1>Trade Offers</h1>
+                <Button label="Create Trade Offer" onClick={createTradeOfferClick} disabled={!user} />
+                <p>Coming soon</p>
+            </div>
         </div>
     );
 }

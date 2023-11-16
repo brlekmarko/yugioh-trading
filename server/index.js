@@ -9,13 +9,14 @@ const sessions = require("express-session");
 const cookieParser = require("cookie-parser");
 const crypto = require("crypto");
 const initialDb = require("./database/initialDb");
+require("dotenv").config();
 
 
 app.use(cookieParser());
 
 const oneDay = 1000 * 60 * 60 * 24;
 app.use(sessions({
-    secret: "thisismysecrctekeyfhrgfgrfrty84fwir767",
+    secret: process.env.SESSION_SECRET,
     saveUninitialized:true,
     cookie: { maxAge: oneDay },
     resave: false 
@@ -162,11 +163,6 @@ app.delete(url + "/users/:username", async (req, res) => {
 
 app.get(url + "/users/:username", async (req, res) => {
   const username = req.params.username;
-  // admin only, or user getting their own account
-  if (!req.session.user || (!req.session.user.admin && req.session.user.username !== username)) {
-    res.json({ success: false });
-    return;
-  }
   const user = await client.query(queries.getUser(username));
   res.json({ success: true, user: user.rows[0] });
 });
@@ -260,11 +256,6 @@ app.get(url + "/cards/:id", async (req, res) => {
 
 app.get(url + "/users/:username/cards", async (req, res) => {
   const username = req.params.username;
-  // admin only, or user getting their own cards
-  if (!req.session.user || (!req.session.user.admin && req.session.user.username !== username)) {
-    res.json({ success: false });
-    return;
-  }
   const cards = await client.query(queries.getAllUserCards(username));
   res.json({ success: true, cards: cards.rows });
 });
@@ -413,6 +404,45 @@ async function initializeOwnership(){
   catch(e){
     await client.query("ROLLBACK");
   }
+}
+
+async function initializeTradeOffers(){
+  // check if trade offers table is empty, if so, fill it with initial data
+  const tradeOffers = await client.query(queries.getAllTradeOffers());
+  if(tradeOffers.rows.length > 0){
+    return;
+  }
+
+  await client.query("BEGIN");
+
+  try{
+      const initialTradeOffers = initialDb.initialTradeOffers();
+
+      for (let tradeOffer of initialTradeOffers) {
+        const result = await client.query(queries.createTradeOffer(tradeOffer.username));
+        const id = result.rows[0].id;
+
+        const offeringCardsIds = [];
+        const wantingCardsIds = [];
+
+        for(let cardName of tradeOffer.offering){
+          const card = await client.query(queries.getCardByName(cardName));
+          offeringCardsIds.push(card.rows[0].id);
+        }
+        await client.query(queries.createOfferingCards(id, offeringCardsIds));
+
+        for(let cardName of tradeOffer.wanting){
+          const card = await client.query(queries.getCardByName(cardName));
+          wantingCardsIds.push(card.rows[0].id);
+        }
+        await client.query(queries.createWantingCards(id, wantingCardsIds));
+      }
+
+      await client.query("COMMIT")
+  }catch(e){
+    console.log(e);
+    await client.query("ROLLBACK");
+  }
 
 }
 
@@ -423,4 +453,5 @@ app.listen(5000, async () => {
   console.log("server started on port 5000");
   await initializeDatabase();
   await initializeOwnership();
+  await initializeTradeOffers();
 });

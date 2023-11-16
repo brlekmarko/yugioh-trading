@@ -90,7 +90,9 @@ export default function ProfilePage(){
                 <p>First Name: {user.first_name}</p>
                 <p>Last Name: {user.last_name}</p>
                 <p>Admin: {user.admin ? "Yes" : "No"}</p>
-                <Button label="Delete Account" onClick={() => DeleteUser(user?.username)} />
+                {(myUser?.admin || myUser?.username === user.username) &&
+                    <Button label="Delete Account" onClick={() => DeleteUser(user?.username)} />
+                }
                 <hr/>
                 <div className="user-cards">
                     <h1>Owned Cards</h1>

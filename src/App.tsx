@@ -38,7 +38,7 @@ function App() {
   async function logout() {
     const res = await logoutUser();
     setUser(undefined);
-    navigate('/');
+    window.location.href = "/";
   }
 
 

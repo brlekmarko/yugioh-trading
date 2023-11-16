@@ -36,6 +36,10 @@ function getCard(id){
     return `SELECT id, name, type, description, image FROM CARDS WHERE id = ${id}`;
 }
 
+function getCardByName(name){
+    return `SELECT id, name, type, description, image FROM CARDS WHERE name = $$${name}$$`;
+}
+
 function createCard(card){
     return `INSERT INTO CARDS (name, type, description, image) VALUES 
     ($$${card.name}$$, $$${card.type}$$, $$${card.description}$$, $$${card.image}$$) RETURNING id`;
@@ -100,7 +104,7 @@ function getTradeOffersForUser(username){
 }
 
 function createTradeOffer(username){
-    return `INSERT INTO trade_offers (username) VALUES ('${username}') RETURNING id`;
+    return `INSERT INTO trade_offers (username, last_edit) VALUES ('${username}', NOW()) RETURNING id`;
 }
 
 function createOfferingCards(id_trade_offer, id_cards){
@@ -144,6 +148,7 @@ module.exports = {
     deleteUser,
     getAllCards,
     getCard,
+    getCardByName,
     createCard,
     updateCard,
     deleteCard,

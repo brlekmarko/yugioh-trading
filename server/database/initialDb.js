@@ -211,9 +211,26 @@ function initialOwnership(){
     return ownership;
 }
 
+function initialTradeOffers(){
+    trade_offers=[
+        {
+            username: "testuser",
+            offering: ["Dark Magician", "Blue-Eyes White Dragon"],
+            wanting: ["Obelisk the Tormentor"]
+        },
+        {
+            username: "testuser",
+            offering: ["Monster Reborn"],
+            wanting: ["Polymerization"]
+        }
+    ];
+    return trade_offers;
+}
+
 
 module.exports = {
     initialUsers,
     initialCards,
-    initialOwnership
+    initialOwnership,
+    initialTradeOffers
 }
