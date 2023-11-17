@@ -67,12 +67,29 @@ function addCardToUser(username, card){
     return `INSERT INTO OWNERSHIP (username, id_card) VALUES ('${username}', ${card.id})`;
 }
 
+function addCardsToUser(username, cards){
+
+    if(cards.length == 0){
+        return "";
+    }
+
+    // cards is an array of card ids
+    let query = `INSERT INTO OWNERSHIP (username, id_card) VALUES `;
+    for(let i = 0; i < cards.length; i++){
+        query += `('${username}', ${cards[i]})`;
+        if(i < cards.length - 1){
+            query += ", ";
+        }
+    }
+    return query;
+}
+
 function addCardToUserByName(username, card_name){
     return `INSERT INTO OWNERSHIP (username, id_card) VALUES ('${username}', (SELECT id FROM cards WHERE name = '${card_name}'))`;
 }
 
 function removeCardFromUser(username, id){
-    return `DELETE FROM OWNERSHIP WHERE username = '${username}' AND id_card = ${id}`;
+    return `DELETE FROM OWNERSHIP WHERE id IN (SELECT id FROM ownership WHERE username = '${username}' AND id_card = ${id} LIMIT 1)`; // if user has multiple copies of the same card, only delete one
 }
 
 function deleteAllOwnershipsOfCard(id){
@@ -97,6 +114,10 @@ function getWantedCardsForTradeOffer(id){
 function getOfferedCardsForTradeOffer(id){
     return `SELECT offering.id_card, cards.name, cards.type, cards.description, cards.image FROM trade_offers JOIN offering ON trade_offers.id = offering.id_trade_offer ` +
     `JOIN cards ON offering.id_card = cards.id WHERE trade_offers.id = ${id}`;
+}
+
+function getTradeOffersWithThisCard(id){
+    return `SELECT id_trade_offer FROM offering WHERE id_card = ${id} UNION SELECT id_trade_offer FROM wanting WHERE id_card = ${id}`;
 }
 
 function getTradeOffersForUser(username){
@@ -133,11 +154,8 @@ function createWantingCards(id_trade_offer, id_cards){
 
 function deleteTradeOffer(id){
     // delete trade offer, delete offering, delete wanting
-    return `DELETE FROM trade_offers WHERE id = ${id}; DELETE FROM offering WHERE id_trade_offer = ${id}; DELETE FROM wanting WHERE id_trade_offer = ${id}`;
+    return `DELETE FROM offering WHERE id_trade_offer = ${id}; DELETE FROM wanting WHERE id_trade_offer = ${id}; DELETE FROM trade_offers WHERE id = ${id};`;
 }
-
-
-
 
 
 module.exports = {
@@ -155,6 +173,7 @@ module.exports = {
     getAllOwnerships,
     getAllUserCards,
     addCardToUser,
+    addCardsToUser,
     addCardToUserByName,
     removeCardFromUser,
     deleteAllOwnershipsOfCard,
@@ -162,6 +181,7 @@ module.exports = {
     getTradeOffer,
     getWantedCardsForTradeOffer,
     getOfferedCardsForTradeOffer,
+    getTradeOffersWithThisCard,
     getTradeOffersForUser,
     createTradeOffer,
     createOfferingCards,

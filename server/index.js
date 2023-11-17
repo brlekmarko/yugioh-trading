@@ -234,6 +234,13 @@ app.delete(url + "/cards/:id", async (req, res) => {
   try {
     // need to first delete all ownerships of this card
     await client.query(queries.deleteAllOwnershipsOfCard(id));
+    // need to delete all trade offers that have this card
+    let res = await client.query(queries.getTradeOffersWithThisCard(id));
+    const tradeOfferIds = res.rows;
+    for(let tradeOfferId of tradeOfferIds){
+      await client.query(queries.deleteTradeOffer(tradeOfferId));
+    }
+    // now we can delete the card
     await client.query(queries.deleteCard(id));
     res.json({ success: true });
   } catch (e) {
@@ -344,6 +351,229 @@ app.get(url + "/open-pack", async (req, res) => {
     await client.query("ROLLBACK");
     res.json({ success: false });
   }
+});
+
+
+//////////////////////////////////////////////////////
+//////////////////////////////////////////////////////
+// trade offers
+
+app.get(url + "/trade-offers", async (req, res) => {
+  const tradeOffers = await client.query(queries.getAllTradeOffers());
+  for(let tradeOffer of tradeOffers.rows){
+    const offeringCards = await client.query(queries.getOfferedCardsForTradeOffer(tradeOffer.id));
+    const wantingCards = await client.query(queries.getWantedCardsForTradeOffer(tradeOffer.id));
+    tradeOffer.offering = offeringCards.rows;
+    tradeOffer.wanting = wantingCards.rows;
+  }
+  res.json({ success: true, tradeOffers: tradeOffers.rows });
+});
+
+app.post(url + "/trade-offers", jsonParser, async (req, res) => {
+  if (!req.session.user) {
+    res.json({ success: false });
+    return;
+  }
+
+  const username = req.session.user.username;
+  const { offering, wanting } = req.body; // array of card objects with attribute id_card
+  const offeringIds = offering.map(card => card.id_card); //createOfferingCards expects array of ids
+  const wantingIds = wanting.map(card => card.id_card); //same
+
+  // first we check if user has all the cards he is offering
+  const userCards = await client.query(queries.getAllUserCards(username));
+  const userCardsIds = userCards.rows.map(card => card.id);
+  for(let cardId of offeringIds){
+    if(!userCardsIds.includes(cardId)){
+      res.json({ success: false });
+      return;
+    }
+    userCardsIds.filter(id => id !== cardId); // remove card from userCardsIds, needed when multiple of same card
+  }
+
+  client.query("BEGIN");
+  try{
+    const result = await client.query(queries.createTradeOffer(username));
+    const id = result.rows[0].id;
+
+    await client.query(queries.createOfferingCards(id, offeringIds));
+    await client.query(queries.createWantingCards(id, wantingIds));
+
+    await client.query("COMMIT");
+
+    // send an updated list of trade offers back
+    const tradeOffers = await client.query(queries.getAllTradeOffers());
+    for(let tradeOffer of tradeOffers.rows){
+      const offeringCards = await client.query(queries.getOfferedCardsForTradeOffer(tradeOffer.id));
+      const wantingCards = await client.query(queries.getWantedCardsForTradeOffer(tradeOffer.id));
+      tradeOffer.offering = offeringCards.rows;
+      tradeOffer.wanting = wantingCards.rows;
+    }
+
+    res.json({ success: true, tradeOffers: tradeOffers.rows });
+  }catch(e){
+    console.log(e);
+    await client.query("ROLLBACK");
+    res.json({ success: false });
+  }
+});
+
+
+app.delete(url + "/trade-offers/:id", async (req, res) => {
+  const id = req.params.id;
+  // admin only or user deleting their own trade offer
+  if (!req.session.user || (!req.session.user.admin && req.session.user.username !== username)) {
+    res.json({ success: false });
+    return;
+  }
+  try {
+    await client.query(queries.deleteTradeOffer(id));
+    res.json({ success: true });
+  } catch (e) {
+    console.log(e);
+    res.json({ success: false });
+  }
+});
+
+
+app.get(url + "/trade-offers/:username", async (req, res) => {
+  const username = req.params.username;
+  const tradeOffers = await client.query(queries.getTradeOffersForUser(username));
+  for(let tradeOffer of tradeOffers.rows){
+    const offeringCards = await client.query(queries.getOfferedCardsForTradeOffer(tradeOffer.id));
+    const wantingCards = await client.query(queries.getWantedCardsForTradeOffer(tradeOffer.id));
+    tradeOffer.offering = offeringCards.rows;
+    tradeOffer.wanting = wantingCards.rows;
+  }
+  res.json({ success: true, tradeOffers: tradeOffers.rows });
+});
+
+app.post(url + "/trade-offers/accept/:id", async (req, res) => {
+
+  if (!req.session.user) {
+    console.log("no session user");
+    res.json({ success: false });
+    return;
+  }
+
+  client.query("BEGIN");
+
+  try{
+    const id = req.params.id;
+    const username = req.session.user.username;
+    const tradeOffer = await client.query(queries.getTradeOffer(id));
+    // check if user accepting his own trade offer
+    if (!req.session.user || tradeOffer.rows[0].username === username) {
+      console.log("user accepting his own trade offer");
+      res.json({ success: false });
+      return;
+    }
+
+    // check if user has all the cards he is offering
+    const offeringCards = await client.query(queries.getOfferedCardsForTradeOffer(id));
+    const offeringCardsIds = offeringCards.rows.map(card => card.id_card);
+    const userOfferingCards = await client.query(queries.getAllUserCards(tradeOffer.rows[0].username));
+    const userOfferingCardsIds = userOfferingCards.rows.map(card => card.id);
+    for(let cardId of offeringCardsIds){
+      if(!userOfferingCardsIds.includes(cardId)){
+        console.log("user does not have all the cards he is offering");
+        res.json({ success: false });
+        return;
+      }
+      userOfferingCardsIds.filter(id => id !== cardId); // remove card from userOfferingCardsIds, needed when multiple of same card
+    }
+
+    // check if we have all the cards he wants
+    const wantingCards = await client.query(queries.getWantedCardsForTradeOffer(id));
+    const wantingCardsIds = wantingCards.rows.map(card => card.id_card);
+    const userWantingCards = await client.query(queries.getAllUserCards(username));
+    const userWantingCardsIds = userWantingCards.rows.map(card => card.id);
+    for(let cardId of wantingCardsIds){
+      if(!userWantingCardsIds.includes(cardId)){
+        console.log("we do not have all the cards he wants");
+        res.json({ success: false });
+        return;
+      }
+      userWantingCardsIds.filter(id => id !== cardId); // remove card from userWantingCardsIds, needed when multiple of same card
+    }
+
+    // good to go, do the trade
+
+    // remove cards from user who created the trade offer
+    for(let cardId of offeringCardsIds){
+      await client.query(queries.removeCardFromUser(tradeOffer.rows[0].username, cardId));
+    }
+    // remove cards from user who accepted the trade offer
+    for(let cardId of wantingCardsIds){
+      await client.query(queries.removeCardFromUser(username, cardId));
+    }
+
+    // add cards to user who created the trade offer
+    await client.query(queries.addCardsToUser(tradeOffer.rows[0].username, wantingCardsIds));
+    // add cards to user who accepted the trade offer
+    await client.query(queries.addCardsToUser(username, offeringCardsIds));
+
+    // delete trade offer
+    await client.query(queries.deleteTradeOffer(id));
+
+    await client.query("COMMIT");
+
+
+    // need to delete both users' trade offers that no longer have sufficient cards
+    /////////////////////////////////////////////////
+
+    // delete trade offers of user who created the trade offer
+    const tradeOffers1 = await client.query(queries.getTradeOffersForUser(tradeOffer.rows[0].username));
+    const userOfferingCards1 = await client.query(queries.getAllUserCards(tradeOffer.rows[0].username));
+    const userOfferingCardsIds1 = userOfferingCards1.rows.map(card => card.id);
+    for(let tradeOffer1 of tradeOffers1.rows){
+      const offeringCards1 = await client.query(queries.getOfferedCardsForTradeOffer(tradeOffer1.id));
+      const offeringCardsIds1 = offeringCards1.rows.map(card => card.id_card);
+      const userOfferingCardsIds1Copy = [...userOfferingCardsIds1];
+      for(let cardId of offeringCardsIds1){
+        if(!userOfferingCardsIds1Copy.includes(cardId)){
+          console.log(userOfferingCardsIds1Copy, cardId);
+          await client.query(queries.deleteTradeOffer(tradeOffer1.id));
+          break;
+        }
+        userOfferingCardsIds1Copy.filter(id => id !== cardId); // remove card from userOfferingCardsIds1Copy, needed when multiple of same card
+      }
+    }
+
+    // delete trade offers of user who accepted the trade offer
+    const tradeOffers2 = await client.query(queries.getTradeOffersForUser(username));
+    const userOfferingCards2 = await client.query(queries.getAllUserCards(username));
+    const userOfferingCardsIds2 = userOfferingCards2.rows.map(card => card.id);
+    for(let tradeOffer2 of tradeOffers2.rows){
+      const offeringCards2 = await client.query(queries.getOfferedCardsForTradeOffer(tradeOffer2.id));
+      const offeringCardsIds2 = offeringCards2.rows.map(card => card.id_card);
+      const userOfferingCardsIds2Copy = [...userOfferingCardsIds2];
+      for(let cardId of offeringCardsIds2){
+        if(!userOfferingCardsIds2Copy.includes(cardId)){
+          console.log(userOfferingCardsIds2Copy, cardId);
+          await client.query(queries.deleteTradeOffer(tradeOffer2.id));
+          break;
+        }
+        userOfferingCardsIds2Copy.filter(id => id !== cardId); // remove card from userOfferingCardsIds2Copy, needed when multiple of same card
+      }
+    }
+
+    const newTradeOffers = await client.query(queries.getAllTradeOffers());
+    for(let newTradeOffer of newTradeOffers.rows){
+      const newOfferingCards = await client.query(queries.getOfferedCardsForTradeOffer(newTradeOffer.id));
+      const newWantingCards = await client.query(queries.getWantedCardsForTradeOffer(newTradeOffer.id));
+      newTradeOffer.offering = newOfferingCards.rows;
+      newTradeOffer.wanting = newWantingCards.rows;
+    }
+
+    await client.query("COMMIT");
+    res.json({ success: true , tradeOffers: newTradeOffers.rows});
+
+  } catch (e) {
+    console.log(e);
+    await client.query("ROLLBACK");
+    res.json({ success: false });
+    }
 });
 
 

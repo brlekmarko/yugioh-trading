@@ -211,16 +211,17 @@ function initialOwnership(){
     return ownership;
 }
 
+
 function initialTradeOffers(){
     trade_offers=[
         {
             username: "testuser",
-            offering: ["Dark Magician", "Blue-Eyes White Dragon"],
+            offering: ["Dark Magician Girl", "Blue-Eyes Ultimate Dragon"],
             wanting: ["Obelisk the Tormentor"]
         },
         {
             username: "testuser",
-            offering: ["Monster Reborn"],
+            offering: ["Graceful Charity"],
             wanting: ["Polymerization"]
         }
     ];

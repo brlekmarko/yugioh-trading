@@ -3,9 +3,13 @@ import { User } from "../../interfaces/user";
 import { deleteUser, getUser, getUserByUsername, logoutUser } from "../../apiCalls/userApi";
 import { Button } from "primereact/button";
 import { getAllCards, getCardsForUser } from "../../apiCalls/cardsApi";
-import { Card } from "../../interfaces/card";
+import { Card, CardFromOffer } from "../../interfaces/card";
 import { InputText } from "primereact/inputtext";
 import { useParams } from "react-router-dom";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { TradeOfferWithCards } from "../../interfaces/trade_offer";
+import { deleteTradeOffer, getTradeOffersForUser } from "../../apiCalls/tradeApi";
 
 export default function ProfilePage(){
 
@@ -15,6 +19,7 @@ export default function ProfilePage(){
     let [userCards, setUserCards] = useState<Card[]>();
     let [searchUserCards, setSearchUserCards] = useState<string>("");
     let [searchMissingCards, setSearchMissingCards] = useState<string>("");
+    let [tradeOffers, setTradeOffers] = useState<TradeOfferWithCards[]>();
     let { username } = useParams();
 
     async function DeleteUser(username: string|undefined){
@@ -38,6 +43,16 @@ export default function ProfilePage(){
         }
     }
 
+    async function fetchTradeOffers(user: User){
+        let res = await getTradeOffersForUser(user?.username);
+        if (res.success) {
+            setTradeOffers(res.tradeOffers);
+            return res.tradeOffers;
+        }
+        setTradeOffers([]);
+        return [];
+    }
+
     async function fetchAllCards(){
         let data = await getAllCards();
         if(data.success){
@@ -53,6 +68,21 @@ export default function ProfilePage(){
         setSearchMissingCards(e.target.value);
     }
 
+    async function DeleteTradeOffer(offer:TradeOfferWithCards){
+        
+        if(!myUser || (!myUser.admin && myUser.username !== offer.username)){
+            alert("You must be an admin to delete other users' trade offers");
+            return;
+        }
+
+        let res = await deleteTradeOffer(offer.id);
+        if(res.success){
+            setTradeOffers(tradeOffers?.filter(o => o.id !== offer.id));
+            return;
+        }
+        alert("Failed to delete trade offer");
+    }
+
     useEffect(() => {
         async function fetchUser() {
             if(!username){
@@ -64,6 +94,7 @@ export default function ProfilePage(){
                 setUser(res.user);
                 await fetchUserCards(res.user.username);
                 await fetchAllCards();
+                await fetchTradeOffers(res.user);
                 return;
             }
             setUser(undefined);
@@ -93,7 +124,48 @@ export default function ProfilePage(){
                 {(myUser?.admin || myUser?.username === user.username) &&
                     <Button label="Delete Account" onClick={() => DeleteUser(user?.username)} />
                 }
+
                 <hr/>
+
+                <div className="user-trade-offers">
+                    <h1>Trade Offers</h1>
+                    <DataTable value={tradeOffers?.sort((a,b) => new Date(b.last_edit).getTime() - new Date(a.last_edit).getTime())} showGridlines>
+
+                    <Column header="Username" body={(rowData:TradeOfferWithCards) =>
+                        <a href={"/profile/" + rowData.username} target="_blank">{rowData.username}</a>
+                    }></Column>
+
+                    <Column header="Offering" body={(rowData:TradeOfferWithCards) =>
+                        <div className="trade-offer-cards">
+                            {rowData.offering.map((card:CardFromOffer) => 
+                                <img src={card.image} alt={card.name} width={100} height={150}/>
+                            )}
+                        </div>
+                    }></Column>
+
+                    <Column header="Wanting" body={(rowData:any) =>
+                        <div className="trade-offer-cards">
+                            {rowData.wanting.map((card:Card) => 
+                                <img src={card.image} alt={card.name} width={100} height={150}/>
+                            )}
+                        </div>
+                    }></Column>
+
+                    <Column header="Last Edit" body={(rowData:any) =>
+                        <p>{new Date(rowData.last_edit).toLocaleString()}</p>
+                    }></Column>
+
+                    <Column header="Actions" body={(rowData:any) =>
+                        <div className="trade-offer-actions">
+                            {(myUser && (myUser.admin || myUser.username === rowData.username))
+                            && <Button label="Delete" onClick={() => DeleteTradeOffer(rowData)} />}
+                        </div>
+                    }></Column>
+                </DataTable>
+                </div>
+
+                <hr/>
+
                 <div className="user-cards">
                     <h1>Owned Cards</h1>
                     <div style={{marginBottom: "10px"}}>

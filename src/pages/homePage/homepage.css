@@ -1,0 +1,43 @@
+.multiselect-row{
+    display:flex;
+    flex-direction:row;
+    justify-content:space-between;
+    align-items:center;
+    margin: 0 0 10px 0;
+}
+
+.multiselect-row h1{
+    margin-left: 10px;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #000;
+}
+
+.create-trade-content{
+    display:flex;
+    flex-direction: row;
+    justify-content:space-between;
+    align-items: flex-start;
+    margin: 0 0 10px 0;
+}
+
+.create-trade-content .left-side, .create-trade-content .right-side{
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    align-items:flex-start;
+    width: 500px;
+    flex-wrap:wrap;
+}
+
+.create-trade-buttons{
+    display:flex;
+    flex-direction:row;
+    justify-content:center;
+    align-items:center;
+}
+
+.trade-offer-actions button{
+    margin-right: 10px;
+    margin-top: 10px;
+}
