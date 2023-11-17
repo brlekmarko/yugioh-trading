@@ -15,7 +15,6 @@ import './homePage.css';
 
 export default function HomePage() {
 
-    const [timeOnServer, setTimeOnServer] = useState<string>("");
     const [user, setUser] = useState<User>();
     const [remainingTime, setRemainingTime] = useState<string>(""); // [hours, minutes, seconds]
     const [tradeOffers, setTradeOffers] = useState<TradeOfferWithCards[]>();
@@ -31,6 +30,10 @@ export default function HomePage() {
     const [myCards, setMyCards] = useState<Card[]>([]); // cards that the user has, used when creating trade offer
     const [allCards, setAllCards] = useState<Card[]>([]); // all cards in the game, used when creating trade offer
     const navigate = useNavigate();
+
+    const [newCards, setNewCards] = useState<Card[]>([]); // cards that the user got from opening a pack, used to show the user what cards he got
+    const [newCardsVisible, setNewCardsVisible] = useState<boolean>(false); // used to open the dialog that shows the user what cards he got
+    const [visibleCards, setVisibleCards] = useState<boolean[]>([]); // which cards have been clicked on, used to show the user the front of the card
 
     async function OpenPack() {
         if(!user){
@@ -49,13 +52,14 @@ export default function HomePage() {
 
         let res = await openPack();
         if (res.success) {
-            window.location.href = "/";
+            setNewCards(res.cards);
+            setNewCardsVisible(true);
+            setVisibleCards(new Array(res.cards.length).fill(false));
         }
     }
 
     async function fetchTimeOnServer() {
         let res = await getTimeOnServer();
-        setTimeOnServer(res.time);
         return res.time;
     }
 
@@ -246,21 +250,25 @@ export default function HomePage() {
                 <DataTable value={tradeOffers?.sort((a,b) => new Date(b.last_edit).getTime() - new Date(a.last_edit).getTime())} showGridlines>
 
                     <Column header="Username" body={(rowData:TradeOfferWithCards) =>
-                        <a href={"/profile/" + rowData.username} target="_blank">{rowData.username}</a>
+                        <a href={"/profile/" + rowData.username} target="_blank" rel="noreferrer">{rowData.username}</a>
                     }></Column>
 
                     <Column header="Offering" body={(rowData:TradeOfferWithCards) =>
                         <div className="trade-offer-cards">
                             {rowData.offering.map((card:CardFromOffer) => 
-                                <img src={card.image} alt={card.name} width={100} height={150}/>
+                                <a href={"/card/" + card.id_card} target="_blank" rel="noreferrer">
+                                    <img src={card.image} alt={card.name} width={100} height={150}/>
+                                </a>
                             )}
                         </div>
                     }></Column>
 
                     <Column header="Wanting" body={(rowData:any) =>
                         <div className="trade-offer-cards">
-                            {rowData.wanting.map((card:Card) => 
-                                <img src={card.image} alt={card.name} width={100} height={150}/>
+                            {rowData.wanting.map((card:CardFromOffer) => 
+                                <a href={"/card/" + card.id_card} target="_blank" rel="noreferrer">
+                                    <img src={card.image} alt={card.name} width={100} height={150}/>
+                                </a>
                             )}
                         </div>
                     }></Column>
@@ -332,6 +340,32 @@ export default function HomePage() {
                 </div>
                 <div className="create-trade-buttons">
                     <Button label="Create" onClick={submitTradeOffer} />
+                </div>
+            </Dialog>
+
+            <Dialog style={{width:"600px"}} className="transparent-dialog" visible={newCardsVisible} onHide={() => {
+                setNewCardsVisible(false)
+                setNewCards([]);
+                setVisibleCards([]);
+                window.location.reload();
+            }
+            }>
+                <div className="new-cards-content">
+                    {//first display the back of the cards, then on click display the front}
+                    }
+
+                    {newCards.map((card:Card, i) => 
+                        <div>
+                            <img className={visibleCards[i] ? "animated-card-image" : ""}
+                            src={visibleCards[i] ? card.image : "/back.jpg"} 
+                            alt={card.name} width={200} height={300} 
+                            onClick={() => {
+                                let newVisibleCards = [...visibleCards];
+                                newVisibleCards[i] = true;
+                                setVisibleCards(newVisibleCards);
+                            }}/>
+                        </div>
+                    )}
                 </div>
             </Dialog>
         </div>

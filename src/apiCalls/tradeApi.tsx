@@ -1,6 +1,6 @@
 import axios from "axios";
 import { url } from "./consts";
-import { TradeOffer, TradeOfferWithCards } from "../interfaces/trade_offer";
+import { TradeOfferWithCards } from "../interfaces/trade_offer";
 
 export async function getAllTradeOffers(){
     let res : any = await axios.get(url + "/trade-offers");

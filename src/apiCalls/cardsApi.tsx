@@ -1,6 +1,5 @@
 import axios from "axios";
 import { url } from "./consts";
-import { User } from "../interfaces/user";
 import { Card } from "../interfaces/card";
 
 

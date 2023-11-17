@@ -36,7 +36,7 @@ function App() {
   }
 
   async function logout() {
-    const res = await logoutUser();
+    await logoutUser();
     setUser(undefined);
     window.location.href = "/";
   }

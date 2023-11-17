@@ -65,7 +65,7 @@ export default function AdminPage(){
     }
 
     async function DeleteUser(username:string){
-        let res = await deleteUser(username);
+        await deleteUser(username);
         setUsers(users.filter(user => user.username !== username));
     }
 
@@ -80,7 +80,7 @@ export default function AdminPage(){
     }
 
     async function DeleteCard(card:Card){
-        let res = await deleteCard(card);
+        await deleteCard(card);
         setCards(cards.filter(c => c.id !== card.id));
     }
 
@@ -114,7 +114,7 @@ export default function AdminPage(){
                     <DataTable value={users.filter(user => user.username.toLowerCase().includes(searchUsers.toLowerCase()))} scrollable scrollHeight="300px"
                         style={{border: "1px solid black"}}>
                     <Column header="Username" body={(rowData:any) =>
-                            <a href={"/profile/" + rowData.username} target="_blank">{rowData.username}</a>
+                            <a href={"/profile/" + rowData.username} target="_blank" rel="noreferrer">{rowData.username}</a>
                         }></Column>
                         <Column field="first_name" header="First Name"></Column>
                         <Column field="last_name" header="Last Name"></Column>
@@ -136,7 +136,7 @@ export default function AdminPage(){
                     </div>
                     <DataTable value={cards.filter(card => card.name.toLowerCase().includes(searchCards.toLowerCase())).sort((a,b) => b.id - a.id)}>
                         <Column header="Name" body={(rowData:any) =>
-                            <a href={"/card/" + rowData.id} target="_blank">{rowData.name}</a>
+                            <a href={"/card/" + rowData.id} target="_blank" rel="noreferrer">{rowData.name}</a>
                         }></Column>
                         <Column field="type" header="Type"></Column>
                         <Column field="description" header="Description"></Column>

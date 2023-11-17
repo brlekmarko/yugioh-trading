@@ -27,7 +27,7 @@ export default function ProfilePage(){
             return;
         }
         
-        let res = await deleteUser(username);
+        await deleteUser(username);
 
         setUser(undefined);
         // if we delete our own user, logout
@@ -110,7 +110,7 @@ export default function ProfilePage(){
 
         fetchUser();
         fetchMyUser();
-    },[]);
+    },[username]);
 
     return (
         <div className="ProfilePage">
@@ -132,21 +132,25 @@ export default function ProfilePage(){
                     <DataTable value={tradeOffers?.sort((a,b) => new Date(b.last_edit).getTime() - new Date(a.last_edit).getTime())} showGridlines>
 
                     <Column header="Username" body={(rowData:TradeOfferWithCards) =>
-                        <a href={"/profile/" + rowData.username} target="_blank">{rowData.username}</a>
+                        <a href={"/profile/" + rowData.username} target="_blank" rel="noreferrer">{rowData.username}</a>
                     }></Column>
 
                     <Column header="Offering" body={(rowData:TradeOfferWithCards) =>
                         <div className="trade-offer-cards">
                             {rowData.offering.map((card:CardFromOffer) => 
-                                <img src={card.image} alt={card.name} width={100} height={150}/>
+                                <a href={"/card/" + card.id_card} target="_blank" rel="noreferrer">
+                                    <img src={card.image} alt={card.name} width={100} height={150}/>
+                                </a>
                             )}
                         </div>
                     }></Column>
 
                     <Column header="Wanting" body={(rowData:any) =>
                         <div className="trade-offer-cards">
-                            {rowData.wanting.map((card:Card) => 
-                                <img src={card.image} alt={card.name} width={100} height={150}/>
+                            {rowData.wanting.map((card:CardFromOffer) => 
+                                <a href={"/card/" + card.id_card} target="_blank" rel="noreferrer">
+                                    <img src={card.image} alt={card.name} width={100} height={150}/>
+                                </a>
                             )}
                         </div>
                     }></Column>
