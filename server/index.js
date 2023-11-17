@@ -448,6 +448,7 @@ app.get(url + "/trade-offers/:username", async (req, res) => {
   res.json({ success: true, tradeOffers: tradeOffers.rows });
 });
 
+
 app.post(url + "/trade-offers/accept/:id", async (req, res) => {
 
   if (!req.session.user) {
@@ -575,6 +576,11 @@ app.post(url + "/trade-offers/accept/:id", async (req, res) => {
     res.json({ success: false });
     }
 });
+
+
+
+
+
 
 
 
