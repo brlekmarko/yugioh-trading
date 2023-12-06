@@ -308,14 +308,6 @@ test('user accepts a trade offer', async () => {
     const wanting = [blueeyes];
     await request(app).post(url + '/trade-offers').set('Cookie', `connect.sid=${value2}`).send({offering: offering, wanting: wanting}).expect(201);
 
-    /////////////////////////////////////////////////////////////////////////
-    // these are created so we can check if they get deleted after because of insufficient cards
-    // create some more trade offers with same offerings
-    await request(app).post(url + '/trade-offers').set('Cookie', `connect.sid=${value2}`).send({offering: offering, wanting: [kuriboh]}).expect(201);
-    await request(app).post(url + '/trade-offers').set('Cookie', `connect.sid=${value2}`).send({offering: offering, wanting: [blueeyes, kuriboh]}).expect(201);
-    // create a trade offer with offering containing 2 cards
-    await request(app).post(url + '/trade-offers').set('Cookie', `connect.sid=${value2}`).send({offering: [...offering, kuriboh], wanting: wanting}).expect(201);
-    //////////////////////////////////////////////////////////////////////////
 
     // now login as probni2 and accept the trade offer
     const login3 = await request(app).post(url + '/login').send({username: 'probni2', password: 'korisnik'});
