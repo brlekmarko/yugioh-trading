@@ -6,6 +6,8 @@
 /server/.env
 /server/.envLocal
 /server/.envProd
+/server/test.env
+/server/prod.env
 /.pnp
 .pnp.js
 
