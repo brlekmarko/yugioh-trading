@@ -20,12 +20,14 @@ function App() {
 
   useEffect(() => {
     async function fetchUser() {
-      const res : any = await getUser();
-      if(res.success){
+      try{
+        const res : any = await getUser();
         setUser(res.user);
         return;
       }
-      setUser(undefined);
+      catch(err){
+        setUser(undefined);
+      }
     }
     fetchUser();
   },[]);

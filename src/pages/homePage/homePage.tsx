@@ -50,12 +50,16 @@ export default function HomePage() {
             return;
         }
 
-        let res = await openPack();
-        if (res.success) {
+        try{
+            let res = await openPack();
             setNewCards(res.cards);
             setNewCardsVisible(true);
             setVisibleCards(new Array(res.cards.length).fill(false));
         }
+        catch(e){
+            console.log(e);
+        }
+        
     }
 
     async function fetchTimeOnServer() {
@@ -64,18 +68,24 @@ export default function HomePage() {
     }
 
     async function fetchUser() {
-        let res = await getUser();
-        if (res.success) {
+        try{
+            let res = await getUser();
             setUser(res.user);
             return res.user;
+        }
+        catch(e){
+            console.log(e);
         }
     }
 
     async function fetchTradeOffers(){
-        let res = await getAllTradeOffers();
-        if (res.success) {
+        try{
+            let res = await getAllTradeOffers();
             setTradeOffers(res.tradeOffers);
             return res.tradeOffers;
+        }
+        catch(e){
+            console.log(e);
         }
     }
 
@@ -84,18 +94,24 @@ export default function HomePage() {
             setMyCards([]);
             return;
         }
-        let res = await getCardsForUser(user?.username);
-        if(res.success){
+        try{
+            let res = await getCardsForUser(user?.username);
             setMyCards(res.cards);
             return res.cards;
+        }
+        catch(e){
+            console.log(e);
         }
     }
 
     async function fetchAllCards(){
-        let res = await getAllCards();
-        if(res.success){
+        try{
+            let res = await getAllCards();
             setAllCards(res.cards);
             return res.cards;
+        }
+        catch(e){
+            console.log(e);
         }
     }
 
@@ -131,37 +147,36 @@ export default function HomePage() {
             return;
         }
         // then check so user has all the cards that the trade offer wants
-        let resCards = await getCardsForUser(user?.username);
-        if(!resCards.success){
-            alert("Failed to get user cards");
-            return;
-        }
-        let userCards : Card[] = resCards.cards;
-        let userCardIds = userCards.map(c => c.id);
-        let tradeOfferCardIds = offer.wanting.map(c => c.id_card);
-        let missingCards : string[] = [];
-        for (let i = 0; i < tradeOfferCardIds.length; i++) {
-            if(!userCardIds.includes(tradeOfferCardIds[i])){
-                missingCards.push(offer.wanting[i].name);
+        try{
+            let resCards = await getCardsForUser(user?.username);
+            let userCards : Card[] = resCards.cards;
+            let userCardIds = userCards.map(c => c.id);
+            let tradeOfferCardIds = offer.wanting.map(c => c.id_card);
+            let missingCards : string[] = [];
+            for (let i = 0; i < tradeOfferCardIds.length; i++) {
+                if(!userCardIds.includes(tradeOfferCardIds[i])){
+                    missingCards.push(offer.wanting[i].name);
+                }
+                else{
+                    // remove card from userCardIds, so we can check if user has multiple of the same card
+                    userCardIds = userCardIds.filter(id => id !== tradeOfferCardIds[i]);
+                }
             }
-            else{
-                // remove card from userCardIds, so we can check if user has multiple of the same card
-                userCardIds = userCardIds.filter(id => id !== tradeOfferCardIds[i]);
+            if(missingCards.length > 0){
+                alert("You are missing the following cards: " + missingCards.join(", "));
+                return;
             }
-        }
-        if(missingCards.length > 0){
-            alert("You are missing the following cards: " + missingCards.join(", "));
-            return;
-        }
 
-        // if we get here, we are ready to accept the trade offer
-        let res = await acceptTradeOffer(offer.id);
-        if(res.success){
+            // if we get here, we are ready to accept the trade offer
+            let res = await acceptTradeOffer(offer.id);
             // we did the trade, need to update trade offers, set them to what we got back from the server
             setTradeOffers(res.tradeOffers);
             return;
         }
-        alert("Failed to accept trade offer");
+        catch(e){
+            alert("Failed to accept trade offer");
+            console.log(e);
+        }
     }
 
     async function DeleteTradeOffer(offer:TradeOfferWithCards){
@@ -170,23 +185,28 @@ export default function HomePage() {
             alert("You must be an admin to delete trade offers");
             return;
         }
-
-        let res = await deleteTradeOffer(offer.id);
-        if(res.success){
+        try{
+            let res = await deleteTradeOffer(offer.id);
             setTradeOffers(tradeOffers?.filter(o => o.id !== offer.id));
             return;
         }
-        alert("Failed to delete trade offer");
+        catch(e){
+            alert("Failed to delete trade offer");
+            console.log(e);
+        }
     }
 
     async function submitTradeOffer(){
-        let res = await createTradeOffer(createdTradeOffer);
-        if(res.success){
+        try{
+            let res = await createTradeOffer(createdTradeOffer);
             setTradeOffers(res.tradeOffers);
             closeCreateTradeOffer();
             return;
         }
-        alert("Failed to create trade offer");
+        catch(e){
+            alert("Failed to create trade offer");
+            console.log(e);
+        }
     }
 
     const cardTemplate = (rowData:any) => {
@@ -233,7 +253,12 @@ export default function HomePage() {
 
             return () => clearInterval(interval);
         }
-        fetchAll();
+        try{
+            fetchAll();
+        }
+        catch(e){
+            console.log(e);
+        }
     }, []);
 
 

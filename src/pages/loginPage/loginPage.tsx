@@ -17,12 +17,14 @@ export default function LoginPage() {
             return;
         }
 
-        let res : any = await loginUser(username, password);
-        if(res.success){
+        try{
+            let res : any = await loginUser(username, password);
             window.location.href = '/';
             return;
         }
-        alert("Login failed");
+        catch(err){
+            alert("Login failed");
+        }
     }
 
     return (

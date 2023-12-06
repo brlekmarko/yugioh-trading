@@ -92,6 +92,10 @@ function removeCardFromUser(username, id){
     return `DELETE FROM OWNERSHIP WHERE id IN (SELECT id FROM ownership WHERE username = '${username}' AND id_card = ${id} LIMIT 1)`; // if user has multiple copies of the same card, only delete one
 }
 
+function deleteAllOwnershipsFromUser(username){
+    return `DELETE FROM ownership WHERE username = '${username}'`;
+}
+
 function deleteAllOwnershipsOfCard(id){
     return `DELETE FROM ownership WHERE id_card = ${id}`;
 }
@@ -157,6 +161,17 @@ function deleteTradeOffer(id){
     return `DELETE FROM offering WHERE id_trade_offer = ${id}; DELETE FROM wanting WHERE id_trade_offer = ${id}; DELETE FROM trade_offers WHERE id = ${id};`;
 }
 
+function deleteAllTradeOffersFromUser(username){
+    // delete trade offer, delete offering, delete wanting
+    return `DELETE FROM offering WHERE id_trade_offer IN (SELECT id FROM trade_offers WHERE username = '${username}'); ` +
+    `DELETE FROM wanting WHERE id_trade_offer IN (SELECT id FROM trade_offers WHERE username = '${username}'); ` +
+    `DELETE FROM trade_offers WHERE username = '${username}';`;
+}
+
+function emptyDatabase(){
+    return `DELETE FROM offering; DELETE FROM wanting; DELETE FROM trade_offers; DELETE FROM ownership; DELETE FROM users; DELETE FROM cards;`;
+}
+
 
 module.exports = {
     getAllUsers,
@@ -177,6 +192,7 @@ module.exports = {
     addCardToUserByName,
     removeCardFromUser,
     deleteAllOwnershipsOfCard,
+    deleteAllOwnershipsFromUser,
     getAllTradeOffers,
     getTradeOffer,
     getWantedCardsForTradeOffer,
@@ -186,5 +202,7 @@ module.exports = {
     createTradeOffer,
     createOfferingCards,
     createWantingCards,
-    deleteTradeOffer
+    deleteTradeOffer,
+    deleteAllTradeOffersFromUser,
+    emptyDatabase
 }

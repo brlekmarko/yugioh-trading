@@ -17,12 +17,15 @@ export default function CardPage(){
             return;
         }
 
-        let res = await getCard(id);
-        if(res.success){
+        try{
+            let res = await getCard(id);
             setCard(res.card);
             return;
         }
-        alert("Failed to fetch card");
+        catch(err){
+            setCard(undefined);
+            alert("Failed to fetch card");
+        }
     }
 
     useEffect(() => {

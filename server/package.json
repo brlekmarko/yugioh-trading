@@ -3,9 +3,13 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+
+  "jest": {
+    "testEnvironment": "node"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon index.js"
+    "test": "IF EXIST test.env (ren .env prod.env  && ren test.env .env && jest --watch) ELSE (jest --watch)",
+    "start": "IF EXIST prod.env (ren .env test.env  && ren prod.env .env && nodemon index.js) ELSE (nodemon index.js)"
   },
   "keywords": [],
   "author": "",
@@ -20,5 +24,9 @@
     "express-session": "^1.17.3",
     "nodemon": "^3.0.1",
     "pg": "^8.7.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3"
   }
 }

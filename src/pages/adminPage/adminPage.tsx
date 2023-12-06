@@ -26,16 +26,18 @@ export default function AdminPage(){
 
 
     async function fetchAllUsers(){
-        let res = await getAllUsers();
-        if(res.success){
+        try{
+            let res = await getAllUsers();
             // remove current user from list
             let user = await getUser();
             user = user.user;
             setUsers(res.users.filter((u: User) => u.username !== user.username));
             return;
         }
-        setUsers([]);
-        alert("Failed to fetch users");
+        catch(err){
+            setUsers([]);
+            alert("Failed to fetch users");
+        }
     }
 
     function updateSearchUsers(e: any){
@@ -47,20 +49,25 @@ export default function AdminPage(){
     }
 
     async function fetchAllCards(){
-        let res = await getAllCards();
-        if(res.success){
+        try{
+            let res = await getAllCards();
             setCards(res.cards);
             return;
         }
-        setCards([]);
-        alert("Failed to fetch cards");
+        catch(err){
+            setCards([]);
+            alert("Failed to fetch cards");
+        }
     }
 
     async function fetchMyUser(){
-        let res = await getUser();
-        if(res.success){
+        try{
+            let res = await getUser();
             setUser(res.user);
             return;
+        }
+        catch(err){
+            console.log(err);
         }
     }
 
@@ -70,13 +77,15 @@ export default function AdminPage(){
     }
 
     async function ToggleAdmin(user : User){
-        user.admin = !user.admin;
-        let res = await updateUser(user);
-        if(res.success){
+        try{
+            user.admin = !user.admin;
+            let res = await updateUser(user);
             setUsers(users.map(u => u.username === user.username ? user : u));
             return;
         }
-        alert("Failed to toggle admin");
+        catch(err){
+            alert("Failed to toggle admin");
+        }
     }
 
     async function DeleteCard(card:Card){
@@ -174,16 +183,22 @@ export default function AdminPage(){
                                     return;
                                 }
                                 if(editing){
-                                    let res = await updateCard(createThisCard);
-                                    if(res.success){
+                                    try{
+                                        let res = await updateCard(createThisCard);
                                         setCards(cards.map(c => c.id === createThisCard.id ? createThisCard : c));
-
                                     }
+                                    catch(err){
+                                        alert("Failed to update card");
+                                    }
+
                                 }else{
-                                    let res = await createCard(createThisCard);
-                                    if(res.success){
+                                    try{
+                                        let res = await createCard(createThisCard);
                                         createThisCard.id = res.id;
                                         setCards([...cards, createThisCard]);
+                                    }
+                                    catch(err){
+                                        alert("Failed to create card");
                                     }
                                 }
                                 setCreateThisCard({} as Card); setVisible(false)

@@ -25,12 +25,14 @@ export default function RegisterPage() {
             return;
         }
 
-        let res : any = await registerUser(username, password, firstName, lastName);
-        if(res.success){
+        try{
+            let res : any = await registerUser(username, password, firstName, lastName);
             window.location.href = '/';
             return;
         }
-        alert("Register failed");
+        catch(err){
+            alert("Register failed");
+        }
     }
 
     return (

@@ -37,26 +37,38 @@ export default function ProfilePage(){
     }
 
     async function fetchUserCards(username: string){
-        let data = await getCardsForUser(username);
-        if(data.success){
+        try{
+            let data = await getCardsForUser(username);
             setUserCards(data.cards);
+            return;
+        }
+        catch(err){
+            setUserCards([]);
+            alert("Failed to fetch user cards");
         }
     }
 
     async function fetchTradeOffers(user: User){
-        let res = await getTradeOffersForUser(user?.username);
-        if (res.success) {
+        try{
+            let res = await getTradeOffersForUser(user?.username);
             setTradeOffers(res.tradeOffers);
             return res.tradeOffers;
         }
-        setTradeOffers([]);
-        return [];
+        catch(err){
+            setTradeOffers([]);
+            alert("Failed to fetch trade offers");
+            return [];
+        }
     }
 
     async function fetchAllCards(){
-        let data = await getAllCards();
-        if(data.success){
+        try{
+            let data = await getAllCards();
             setAllCards(data.cards);
+        }
+        catch(err){
+            setAllCards([]);
+            alert("Failed to fetch cards");
         }
     }
 
@@ -75,12 +87,15 @@ export default function ProfilePage(){
             return;
         }
 
-        let res = await deleteTradeOffer(offer.id);
-        if(res.success){
+        try{
+            let res = await deleteTradeOffer(offer.id);
             setTradeOffers(tradeOffers?.filter(o => o.id !== offer.id));
             return;
+            
         }
-        alert("Failed to delete trade offer");
+        catch(err){
+            alert("Failed to delete trade offer");
+        }
     }
 
     useEffect(() => {
@@ -89,23 +104,27 @@ export default function ProfilePage(){
                 setUser(undefined);
                 return;
             }
-            const res : any = await getUserByUsername(username);
-            if(res.success){
+            try{
+                const res : any = await getUserByUsername(username);
                 setUser(res.user);
                 await fetchUserCards(res.user.username);
                 await fetchAllCards();
                 await fetchTradeOffers(res.user);
                 return;
             }
-            setUser(undefined);
+            catch(err){
+                setUser(undefined);
+            }
         }
         async function fetchMyUser() {
-            const res : any = await getUser();
-            if(res.success){
+            try{
+                const res : any = await getUser();
                 setMyUser(res.user);
                 return;
             }
-            setMyUser(undefined);
+            catch(err){
+                setMyUser(undefined);
+            }
         }
 
         fetchUser();

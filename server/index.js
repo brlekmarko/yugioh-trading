@@ -40,30 +40,32 @@ app.post(url + "/login", jsonParser, async (req, res) => {
   const possibleUser = await client.query(queries.getUser(username));
   const user = possibleUser.rows[0];
   if (!user) {
-    res.json({ success: false });
+    // send status code 401 if user does not exist
+    res.sendStatus(401);
     return;
   }
   // need to hash password with sha256 using salt from db
   const hashedpass = crypto.pbkdf2Sync(password, user.salt, 1000, 64, 'sha256').toString('hex');
   if (hashedpass !== user.hashedpass) {
-    res.json({ success: false });
+    res.sendStatus(401);
     return;
   }
   req.session.user = user;
-  res.json({ success: true });
+  res.sendStatus(200);
 });
 
 app.get(url + "/logout", (req, res) => {
   req.session.destroy();
-  res.json({ success: true });
+  res.sendStatus(200);
 });
 
 app.get(url + "/user", (req, res) => {
   if (!req.session.user) {
-    res.json({ success: false });
+    // send status code 401 if user is not logged in
+    res.sendStatus(401);
     return;
   }
-  res.json({ success: true, user: req.session.user });
+  res.json({ user: req.session.user });
 });
 
 
@@ -75,20 +77,27 @@ app.get(url + "/user", (req, res) => {
 
 app.get(url + "/users", async (req, res) => {
   // admin only
-  if (!req.session.user || !req.session.user.admin) {
-    res.json({ success: false });
+  // if not logged in, 401
+  // if not admin, 403
+  if (!req.session.user){
+    res.sendStatus(401);
+    return;
+  }
+  if(!req.session.user.admin){
+    res.sendStatus(403);
     return;
   }
 
   const users = await client.query(queries.getAllUsers());
-  res.json({ success: true, users: users.rows });
+  res.json({ users: users.rows });
 });
 
 app.post(url + "/users", jsonParser, async (req, res) => {
   const { username, password, first_name, last_name } = req.body;
   const possibleUser = await client.query(queries.getUser(username));
   if (possibleUser.rows[0]) { // if user already exists
-    res.json({ success: false });
+    // send status code 409 if user already exists
+    res.sendStatus(409);
     return;
   }
   const salt = crypto.randomBytes(16).toString("hex"); // generate random salt
@@ -109,22 +118,36 @@ app.post(url + "/users", jsonParser, async (req, res) => {
   try {
     await client.query(queries.createUser(user)); // create user in db
     req.session.user = user;
-    res.json({ success: true, user: user });
+    res.status(201).json({ user: user });
 
-    // give user Winged Kuriboh as a starter card
-    await client.query(queries.addCardToUserByName(username, "Winged Kuriboh"));
+    try{
+      // give user Winged Kuriboh as a starter card
+      await client.query(queries.addCardToUserByName(username, "Winged Kuriboh"));
+    }
+    catch(e){
+      // no kuriboh card in db, do nothing
+    }
   } catch (e) {
+    // send status code 500 if something went wrong
     console.log(e);
-    res.json({ success: false });
+    res.sendStatus(500);
+    return;
   }
 });
 
 app.put(url + "/users", jsonParser, async (req, res) => {
   // admin only
-  if (!req.session.user || !req.session.user.admin) {
-    res.json({ success: false });
+  // if not logged in, 401
+  // if not admin, 403
+  if (!req.session.user){
+    res.sendStatus(401);
     return;
   }
+  if(!req.session.user.admin){
+    res.sendStatus(403);
+    return;
+  }
+
   const { username, hashedpass, salt, first_name, last_name, admin, last_pack_opening} = req.body;
   const user = {
     username,
@@ -137,10 +160,12 @@ app.put(url + "/users", jsonParser, async (req, res) => {
   };
   try {
     await client.query(queries.updateUser(user));
-    res.json({ success: true });
+    res.sendStatus(200);
+    return;
   } catch (e) {
-    console.log(e);
-    res.json({ success: false });
+    // send status code 500 if something went wrong
+    res.sendStatus(500);
+    return;
   }
 });
 
@@ -148,23 +173,40 @@ app.delete(url + "/users/:username", async (req, res) => {
 
   const username = req.params.username;
   // admin only, or user deleting their own account
-  if (!req.session.user || (!req.session.user.admin && req.session.user.username !== username)) {
-    res.json({ success: false });
+  if (!req.session.user){
+    res.sendStatus(401);
     return;
   }
+  if (!req.session.user.admin && req.session.user.username !== username) {
+    res.sendStatus(403);
+    return;
+  }
+
   try {
+    // need to first delete all ownerships of this user
+    await client.query(queries.deleteAllOwnershipsFromUser(username));
+    // need to delete all trade offers that this user created
+    await client.query(queries.deleteAllTradeOffersFromUser(username));
+    // now we can delete the user
     await client.query(queries.deleteUser(username));
-    res.json({ success: true });
+    res.sendStatus(200);
+    return;
   } catch (e) {
-    console.log(e);
-    res.json({ success: false });
+    // send status code 500 if something went wrong
+    res.sendStatus(500);
+    return;
   }
 });
 
 app.get(url + "/users/:username", async (req, res) => {
   const username = req.params.username;
   const user = await client.query(queries.getUser(username));
-  res.json({ success: true, user: user.rows[0] });
+  if (!user.rows[0]) {
+    // send status code 404 if user does not exist
+    res.sendStatus(404);
+    return;
+  }
+  res.json({ user: user.rows[0] });
 });
 
 
@@ -176,15 +218,22 @@ app.get(url + "/users/:username", async (req, res) => {
 
 app.get(url + "/cards", async (req, res) => {
   const cards = await client.query(queries.getAllCards());
-  res.json({ success: true, cards: cards.rows });
+  res.json({ cards: cards.rows });
 });
 
 app.post(url + "/cards", jsonParser, async (req, res) => {
   // admin only
-  if (!req.session.user || !req.session.user.admin) {
-    res.json({ success: false });
+  // if not logged in, 401
+  // if not admin, 403
+  if (!req.session.user){
+    res.sendStatus(401);
     return;
   }
+  if(!req.session.user.admin){
+    res.sendStatus(403);
+    return;
+  }
+
   const { name, type, description, image } = req.body;
   const card = {
     name,
@@ -194,19 +243,26 @@ app.post(url + "/cards", jsonParser, async (req, res) => {
   };
   try {
     const result = await client.query(queries.createCard(card));
-    res.json({ success: true, id: result.rows[0].id });
+    res.status(201).json({ id: result.rows[0].id });
   } catch (e) {
-    console.log(e);
-    res.json({ success: false });
+    res.sendStatus(500);
+    return;
   }
 });
 
 app.put(url + "/cards", jsonParser, async (req, res) => {
   // admin only
-  if (!req.session.user || !req.session.user.admin) {
-    res.json({ success: false });
+  // if not logged in, 401
+  // if not admin, 403
+  if (!req.session.user){
+    res.sendStatus(401);
     return;
   }
+  if(!req.session.user.admin){
+    res.sendStatus(403);
+    return;
+  }
+
   const { id, name, type, description, image } = req.body;
   const card = {
     id,
@@ -217,42 +273,51 @@ app.put(url + "/cards", jsonParser, async (req, res) => {
   };
   try {
     await client.query(queries.updateCard(card));
-    res.json({ success: true });
+    res.sendStatus(200);
+    return;
   } catch (e) {
-    console.log(e);
-    res.json({ success: false });
+    res.sendStatus(500);
+    return;
   }
 });
 
 app.delete(url + "/cards/:id", async (req, res) => {
   // admin only
-  if (!req.session.user || !req.session.user.admin) {
-    res.json({ success: false });
+  // if not logged in, 401
+  // if not admin, 403
+  if (!req.session.user){
+    res.sendStatus(401);
     return;
   }
+  if(!req.session.user.admin){
+    res.sendStatus(403);
+    return;
+  }
+
   const id = req.params.id;
   try {
     // need to first delete all ownerships of this card
     await client.query(queries.deleteAllOwnershipsOfCard(id));
     // need to delete all trade offers that have this card
-    let res = await client.query(queries.getTradeOffersWithThisCard(id));
-    const tradeOfferIds = res.rows;
+    const result = await client.query(queries.getTradeOffersWithThisCard(id));
+    const tradeOfferIds = result.rows;
     for(let tradeOfferId of tradeOfferIds){
       await client.query(queries.deleteTradeOffer(tradeOfferId));
     }
     // now we can delete the card
     await client.query(queries.deleteCard(id));
-    res.json({ success: true });
+    res.sendStatus(200);
+    return;
   } catch (e) {
-    console.log(e);
-    res.json({ success: false });
+    res.sendStatus(500);
+    return;
   }
 });
 
 app.get(url + "/cards/:id", async (req, res) => {
   const id = req.params.id;
   const card = await client.query(queries.getCard(id));
-  res.json({ success: true, card: card.rows[0] });
+  res.json({ card: card.rows[0] });
 });
 
 
@@ -264,14 +329,20 @@ app.get(url + "/cards/:id", async (req, res) => {
 app.get(url + "/users/:username/cards", async (req, res) => {
   const username = req.params.username;
   const cards = await client.query(queries.getAllUserCards(username));
-  res.json({ success: true, cards: cards.rows });
+  res.json({ cards: cards.rows });
 });
 
 app.post(url + "/users/:username/cards", jsonParser, async (req, res) => {
   const username = req.params.username;
   // admin only
-  if (!req.session.user || !req.session.user.admin) {
-    res.json({ success: false });
+  // if not logged in, 401
+  // if not admin, 403
+  if (!req.session.user){
+    res.sendStatus(401);
+    return;
+  }
+  if(!req.session.user.admin){
+    res.sendStatus(403);
     return;
   }
 
@@ -280,14 +351,15 @@ app.post(url + "/users/:username/cards", jsonParser, async (req, res) => {
     // check if card exists
     const card = await client.query(queries.getCard(id));
     if (card.rows.length === 0) {
-      res.json({ success: false });
-      return;
+      // send status code 400 if card does not exist
+      res.status(400).json({ message: "Card does not exist" });
     }
-    await client.query(queries.addCardToUser(username, id));
-    res.json({ success: true });
+    await client.query(queries.addCardToUser(username, card.rows[0]));
+    res.sendStatus(200);
+    return;
   } catch (e) {
-    console.log(e);
-    res.json({ success: false });
+    res.sendStatus(500);
+    return;
   }
 });
 
@@ -295,16 +367,22 @@ app.delete(url + "/users/:username/cards/:id", async (req, res) => {
   const username = req.params.username;
   const id = req.params.id;
   // admin only, or user deleting their own card
-  if (!req.session.user || (!req.session.user.admin && req.session.user.username !== username)) {
-    res.json({ success: false });
+  if (!req.session.user){
+    res.sendStatus(401);
     return;
   }
+  if (!req.session.user.admin && req.session.user.username !== username) {
+    res.sendStatus(403);
+    return;
+  }
+
   try {
     await client.query(queries.removeCardFromUser(username, id));
-    res.json({ success: true });
+    res.sendStatus(200);
+    return;
   } catch (e) {
-    console.log(e);
-    res.json({ success: false });
+    res.sendStatus(500);
+    return;
   }
 });
 
@@ -319,7 +397,7 @@ app.get(url + "/current-time", (req, res) => {
 
 app.get(url + "/open-pack", async (req, res) => {
   if (!req.session.user) {
-    res.json({ success: false });
+    res.sendStatus(401);
     return;
   }
   client.query("BEGIN");
@@ -332,7 +410,7 @@ app.get(url + "/open-pack", async (req, res) => {
     const timeSinceLastPackOpening = now.getTime() - lastPackOpening.getTime();
     const hoursSinceLastPackOpening = timeSinceLastPackOpening / 1000 / 60 / 60;
     if (hoursSinceLastPackOpening < 12) { // if less than 12 hours since last pack opening
-      res.json({ success: false });
+      res.status(400).json({ message: "Need to wait before opening another pack"});
       return;
     }
     const cards = await client.query(queries.getAllCards());
@@ -344,12 +422,12 @@ app.get(url + "/open-pack", async (req, res) => {
     await client.query(queries.updateUser(user.rows[0]));
     req.session.user.last_pack_opening = now.toISOString();
     await client.query("COMMIT");
-    res.json({ success: true, cards: [randomCard1, randomCard2] });
+    res.json({ cards: [randomCard1, randomCard2] });
   }
   catch(e){
-    console.log(e);
     await client.query("ROLLBACK");
-    res.json({ success: false });
+    res.sendStatus(500);
+    return;
   }
 });
 
@@ -366,12 +444,12 @@ app.get(url + "/trade-offers", async (req, res) => {
     tradeOffer.offering = offeringCards.rows;
     tradeOffer.wanting = wantingCards.rows;
   }
-  res.json({ success: true, tradeOffers: tradeOffers.rows });
+  res.json({ tradeOffers: tradeOffers.rows });
 });
 
 app.post(url + "/trade-offers", jsonParser, async (req, res) => {
   if (!req.session.user) {
-    res.json({ success: false });
+    res.sendStatus(401);
     return;
   }
 
@@ -385,7 +463,7 @@ app.post(url + "/trade-offers", jsonParser, async (req, res) => {
   const userCardsIds = userCards.rows.map(card => card.id);
   for(let cardId of offeringIds){
     if(!userCardsIds.includes(cardId)){
-      res.json({ success: false });
+      res.status(400).json({ message: "User does not have all the cards he is offering"});
       return;
     }
     userCardsIds.filter(id => id !== cardId); // remove card from userCardsIds, needed when multiple of same card
@@ -410,11 +488,11 @@ app.post(url + "/trade-offers", jsonParser, async (req, res) => {
       tradeOffer.wanting = wantingCards.rows;
     }
 
-    res.json({ success: true, tradeOffers: tradeOffers.rows });
+    res.status(201).json({ tradeOffers: tradeOffers.rows });
   }catch(e){
-    console.log(e);
     await client.query("ROLLBACK");
-    res.json({ success: false });
+    res.sendStatus(500);
+    return;
   }
 });
 
@@ -422,16 +500,26 @@ app.post(url + "/trade-offers", jsonParser, async (req, res) => {
 app.delete(url + "/trade-offers/:id", async (req, res) => {
   const id = req.params.id;
   // admin only or user deleting their own trade offer
-  if (!req.session.user || (!req.session.user.admin && req.session.user.username !== username)) {
-    res.json({ success: false });
+  if(!req.session.user){
+    res.sendStatus(401);
     return;
   }
+
+  // need to find out who created the trade offer
+  const tradeOffer = await client.query(queries.getTradeOffer(id));
+  const username = tradeOffer.rows[0].username;
+  if (!req.session.user.admin && req.session.user.username !== username) {
+    res.sendStatus(403);
+    return;
+  }
+
   try {
     await client.query(queries.deleteTradeOffer(id));
-    res.json({ success: true });
+    res.sendStatus(200);
+    return;
   } catch (e) {
-    console.log(e);
-    res.json({ success: false });
+    res.sendStatus(500);
+    return;
   }
 });
 
@@ -445,15 +533,14 @@ app.get(url + "/trade-offers/:username", async (req, res) => {
     tradeOffer.offering = offeringCards.rows;
     tradeOffer.wanting = wantingCards.rows;
   }
-  res.json({ success: true, tradeOffers: tradeOffers.rows });
+  res.json({ tradeOffers: tradeOffers.rows });
 });
 
 
 app.post(url + "/trade-offers/accept/:id", async (req, res) => {
 
   if (!req.session.user) {
-    console.log("no session user");
-    res.json({ success: false });
+    res.sendStatus(401);
     return;
   }
 
@@ -464,9 +551,8 @@ app.post(url + "/trade-offers/accept/:id", async (req, res) => {
     const username = req.session.user.username;
     const tradeOffer = await client.query(queries.getTradeOffer(id));
     // check if user accepting his own trade offer
-    if (!req.session.user || tradeOffer.rows[0].username === username) {
-      console.log("user accepting his own trade offer");
-      res.json({ success: false });
+    if (tradeOffer.rows[0].username === username) {
+      res.status(400).json({ message: "User accepting his own trade offer"});
       return;
     }
 
@@ -477,8 +563,7 @@ app.post(url + "/trade-offers/accept/:id", async (req, res) => {
     const userOfferingCardsIds = userOfferingCards.rows.map(card => card.id);
     for(let cardId of offeringCardsIds){
       if(!userOfferingCardsIds.includes(cardId)){
-        console.log("user does not have all the cards he is offering");
-        res.json({ success: false });
+        res.status(400).json({ message: "User does not have all the cards he is offering"});
         return;
       }
       userOfferingCardsIds.filter(id => id !== cardId); // remove card from userOfferingCardsIds, needed when multiple of same card
@@ -491,8 +576,7 @@ app.post(url + "/trade-offers/accept/:id", async (req, res) => {
     const userWantingCardsIds = userWantingCards.rows.map(card => card.id);
     for(let cardId of wantingCardsIds){
       if(!userWantingCardsIds.includes(cardId)){
-        console.log("we do not have all the cards he wants");
-        res.json({ success: false });
+        res.status(400).json({ message: "We do not have all the cards he wants"});
         return;
       }
       userWantingCardsIds.filter(id => id !== cardId); // remove card from userWantingCardsIds, needed when multiple of same card
@@ -533,7 +617,6 @@ app.post(url + "/trade-offers/accept/:id", async (req, res) => {
       const userOfferingCardsIds1Copy = [...userOfferingCardsIds1];
       for(let cardId of offeringCardsIds1){
         if(!userOfferingCardsIds1Copy.includes(cardId)){
-          console.log(userOfferingCardsIds1Copy, cardId);
           await client.query(queries.deleteTradeOffer(tradeOffer1.id));
           break;
         }
@@ -551,7 +634,6 @@ app.post(url + "/trade-offers/accept/:id", async (req, res) => {
       const userOfferingCardsIds2Copy = [...userOfferingCardsIds2];
       for(let cardId of offeringCardsIds2){
         if(!userOfferingCardsIds2Copy.includes(cardId)){
-          console.log(userOfferingCardsIds2Copy, cardId);
           await client.query(queries.deleteTradeOffer(tradeOffer2.id));
           break;
         }
@@ -568,12 +650,12 @@ app.post(url + "/trade-offers/accept/:id", async (req, res) => {
     }
 
     await client.query("COMMIT");
-    res.json({ success: true , tradeOffers: newTradeOffers.rows});
+    res.json({ tradeOffers: newTradeOffers.rows});
 
   } catch (e) {
-    console.log(e);
     await client.query("ROLLBACK");
-    res.json({ success: false });
+    res.sendStatus(500);
+    return;
     }
 });
 
@@ -683,11 +765,19 @@ async function initializeTradeOffers(){
 }
 
 
-
-// start express server on port 5000
-app.listen(5000, async () => {
-  console.log("server started on port 5000");
-  await initializeDatabase();
-  await initializeOwnership();
-  await initializeTradeOffers();
-});
+if(process.env.NODE_ENV === "test"){
+  const emptyDatabase = async () => {
+    await client.query(queries.emptyDatabase());
+    return;
+  }
+  module.exports = { app, emptyDatabase, initializeDatabase, initializeOwnership, initializeTradeOffers };
+}
+else{
+  // start express server on port 5000
+  app.listen(5000, async () => {
+    console.log("server started on port 5000");
+    await initializeDatabase();
+    await initializeOwnership();
+    await initializeTradeOffers();
+  });
+}
