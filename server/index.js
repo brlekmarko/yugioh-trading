@@ -10,6 +10,42 @@ const cookieParser = require("cookie-parser");
 const crypto = require("crypto");
 const initialDb = require("./database/initialDb");
 require("dotenv").config();
+const winston = require("winston");
+
+app.use(express.json());
+
+
+// logging
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  defaultMeta: { service: 'server' },
+  transports: [
+    new winston.transports.File({ filename: 'server.log', maxsize: 1000000 }), // 1MB
+  ],
+});
+
+const errorLogger = winston.createLogger({
+  level: 'error',
+  format: winston.format.json(),
+  defaultMeta: { service: 'server' },
+  transports: [
+    new winston.transports.File({ filename: 'error.log', maxsize: 1000000 }), // 1MB
+  ],
+});
+
+app.use((req, res, next) => {
+  logger.info({
+    method: req.method,
+    url: req.url,
+    time: new Date().toISOString(),
+    body: req.body,
+    session: req.session,
+    cookies: req.cookies,
+    user: req.session ? req.session.user : null
+  });
+  next();
+});
 
 
 app.use(cookieParser());
@@ -22,7 +58,11 @@ app.use(sessions({
     resave: false 
 }));
 
-client.connect();
+client.connect().catch(e => {
+  console.log(e);
+  errorLogger.error({errorMessage: "Could not connect to database", error: e, time: new Date().toISOString()});
+  process.exit(1);
+});
 
 //cors
 const cors = require("cors");
@@ -36,36 +76,57 @@ const url = "/api";
 // login, logout, userinfo
 
 app.post(url + "/login", jsonParser, async (req, res) => {
-  const { username, password } = req.body;
-  const possibleUser = await client.query(queries.getUser(username));
-  const user = possibleUser.rows[0];
-  if (!user) {
-    // send status code 401 if user does not exist
-    res.sendStatus(401);
+  try{
+    const { username, password } = req.body;
+    const possibleUser = await client.query(queries.getUser(username));
+    const user = possibleUser.rows[0];
+    if (!user) {
+      // send status code 401 if user does not exist
+      res.sendStatus(401);
+      return;
+    }
+    // need to hash password with sha256 using salt from db
+    const hashedpass = crypto.pbkdf2Sync(password, user.salt, 1000, 64, 'sha256').toString('hex');
+    if (hashedpass !== user.hashedpass) {
+      res.sendStatus(401);
+      return;
+    }
+    req.session.user = user;
+    res.sendStatus(200);
+  } catch (e) {
+    // send status code 500 if something went wrong
+    errorLogger.error({errorMessage: "Could not login user", error: e, time: new Date().toISOString()});
+    res.sendStatus(500);
     return;
   }
-  // need to hash password with sha256 using salt from db
-  const hashedpass = crypto.pbkdf2Sync(password, user.salt, 1000, 64, 'sha256').toString('hex');
-  if (hashedpass !== user.hashedpass) {
-    res.sendStatus(401);
-    return;
-  }
-  req.session.user = user;
-  res.sendStatus(200);
 });
 
 app.get(url + "/logout", (req, res) => {
-  req.session.destroy();
-  res.sendStatus(200);
+  try{
+    req.session.destroy();
+    res.sendStatus(200);
+  } catch (e) {
+    // send status code 500 if something went wrong
+    errorLogger.error({errorMessage: "Could not logout user", error: e, time: new Date().toISOString()});
+    res.sendStatus(500);
+    return;
+  }
 });
 
 app.get(url + "/user", (req, res) => {
-  if (!req.session.user) {
-    // send status code 401 if user is not logged in
-    res.sendStatus(401);
+  try{
+    if (!req.session.user) {
+      // send status code 401 if user is not logged in
+      res.sendStatus(401);
+      return;
+    }
+    res.json({ user: req.session.user });
+  } catch (e) {
+    // send status code 500 if something went wrong
+    errorLogger.error({errorMessage: "Could not get user info from session", error: e, time: new Date().toISOString()});
+    res.sendStatus(500);
     return;
   }
-  res.json({ user: req.session.user });
 });
 
 
@@ -88,48 +149,64 @@ app.get(url + "/users", async (req, res) => {
     return;
   }
 
-  const users = await client.query(queries.getAllUsers());
-  res.json({ users: users.rows });
+  try{
+    const users = await client.query(queries.getAllUsers());
+    res.json({ users: users.rows });
+  } catch (e) {
+    // send status code 500 if something went wrong
+    errorLogger.error({errorMessage: "Could not get list of all users", error: e, time: new Date().toISOString()});
+    res.sendStatus(500);
+    return;
+  }
 });
 
 app.post(url + "/users", jsonParser, async (req, res) => {
-  const { username, password, first_name, last_name } = req.body;
-  const possibleUser = await client.query(queries.getUser(username));
-  if (possibleUser.rows[0]) { // if user already exists
-    // send status code 409 if user already exists
-    res.sendStatus(409);
-    return;
-  }
-  const salt = crypto.randomBytes(16).toString("hex"); // generate random salt
-  const hashedpass = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha256').toString('hex');
-  // make last pack opening 48 hours ago
-  const last_pack_opening = new Date();
-  last_pack_opening.setHours(last_pack_opening.getHours() - 48);
-
-  const user = {
-    username,
-    first_name,
-    last_name,
-    hashedpass,
-    salt,
-    last_pack_opening: last_pack_opening.toISOString(),
-    admin: false,
-  };
-  try {
-    await client.query(queries.createUser(user)); // create user in db
-    req.session.user = user;
-    res.status(201).json({ user: user });
-
-    try{
-      // give user Winged Kuriboh as a starter card
-      await client.query(queries.addCardToUserByName(username, "Winged Kuriboh"));
+  try{
+    const { username, password, first_name, last_name } = req.body;
+    const possibleUser = await client.query(queries.getUser(username));
+    if (possibleUser.rows[0]) { // if user already exists
+      // send status code 409 if user already exists
+      res.sendStatus(409);
+      return;
     }
-    catch(e){
-      // no kuriboh card in db, do nothing
+    const salt = crypto.randomBytes(16).toString("hex"); // generate random salt
+    const hashedpass = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha256').toString('hex');
+    // make last pack opening 48 hours ago
+    const last_pack_opening = new Date();
+    last_pack_opening.setHours(last_pack_opening.getHours() - 48);
+
+    const user = {
+      username,
+      first_name,
+      last_name,
+      hashedpass,
+      salt,
+      last_pack_opening: last_pack_opening.toISOString(),
+      admin: false,
+    };
+    try {
+      await client.query(queries.createUser(user)); // create user in db
+      req.session.user = user;
+      res.status(201).json({ user: user });
+
+      try{
+        // give user Winged Kuriboh as a starter card
+        await client.query(queries.addCardToUserByName(username, "Winged Kuriboh"));
+      }
+      catch(e){
+        // no kuriboh card in db, do nothing
+      }
+    } catch (e) {
+      // send status code 500 if something went wrong
+      console.log(e);
+      errorLogger.error({errorMessage: "Could not persist new user to database", error: e, time: new Date().toISOString()});
+      res.sendStatus(500);
+      return;
     }
   } catch (e) {
     // send status code 500 if something went wrong
     console.log(e);
+    errorLogger.error({errorMessage: "Error while creating new user", error: e, time: new Date().toISOString()});
     res.sendStatus(500);
     return;
   }
@@ -164,6 +241,7 @@ app.put(url + "/users", jsonParser, async (req, res) => {
     return;
   } catch (e) {
     // send status code 500 if something went wrong
+    errorLogger.error({errorMessage: "Could not update user", error: e, time: new Date().toISOString()});
     res.sendStatus(500);
     return;
   }
@@ -193,20 +271,28 @@ app.delete(url + "/users/:username", async (req, res) => {
     return;
   } catch (e) {
     // send status code 500 if something went wrong
+    errorLogger.error({errorMessage: "Could not delete user from database", error: e, time: new Date().toISOString()});
     res.sendStatus(500);
     return;
   }
 });
 
 app.get(url + "/users/:username", async (req, res) => {
-  const username = req.params.username;
-  const user = await client.query(queries.getUser(username));
-  if (!user.rows[0]) {
-    // send status code 404 if user does not exist
-    res.sendStatus(404);
+  try{
+    const username = req.params.username;
+    const user = await client.query(queries.getUser(username));
+    if (!user.rows[0]) {
+      // send status code 404 if user does not exist
+      res.sendStatus(404);
+      return;
+    }
+    res.json({ user: user.rows[0] });
+  } catch (e) {
+    // send status code 500 if something went wrong
+    errorLogger.error({errorMessage: "Could not get user info from database by username", error: e, time: new Date().toISOString()});
+    res.sendStatus(500);
     return;
   }
-  res.json({ user: user.rows[0] });
 });
 
 
@@ -217,8 +303,15 @@ app.get(url + "/users/:username", async (req, res) => {
 // GET, POST, PUT, DELETE
 
 app.get(url + "/cards", async (req, res) => {
-  const cards = await client.query(queries.getAllCards());
-  res.json({ cards: cards.rows });
+  try{
+    const cards = await client.query(queries.getAllCards());
+    res.json({ cards: cards.rows });
+  } catch (e) {
+    // send status code 500 if something went wrong
+    errorLogger.error({errorMessage: "Could not get list of all cards", error: e, time: new Date().toISOString()});
+    res.sendStatus(500);
+    return;
+  }
 });
 
 app.post(url + "/cards", jsonParser, async (req, res) => {
@@ -245,6 +338,7 @@ app.post(url + "/cards", jsonParser, async (req, res) => {
     const result = await client.query(queries.createCard(card));
     res.status(201).json({ id: result.rows[0].id });
   } catch (e) {
+    errorLogger.error({errorMessage: "Could not create new card", error: e, time: new Date().toISOString()});
     res.sendStatus(500);
     return;
   }
@@ -276,6 +370,7 @@ app.put(url + "/cards", jsonParser, async (req, res) => {
     res.sendStatus(200);
     return;
   } catch (e) {
+    errorLogger.error({errorMessage: "Could not update card", error: e, time: new Date().toISOString()});
     res.sendStatus(500);
     return;
   }
@@ -309,15 +404,22 @@ app.delete(url + "/cards/:id", async (req, res) => {
     res.sendStatus(200);
     return;
   } catch (e) {
+    errorLogger.error({errorMessage: "Could not delete card", error: e, time: new Date().toISOString()});
     res.sendStatus(500);
     return;
   }
 });
 
 app.get(url + "/cards/:id", async (req, res) => {
-  const id = req.params.id;
-  const card = await client.query(queries.getCard(id));
-  res.json({ card: card.rows[0] });
+  try{
+    const id = req.params.id;
+    const card = await client.query(queries.getCard(id));
+    res.json({ card: card.rows[0] });
+  } catch (e) {
+    errorLogger.error({errorMessage: "Could not get card info from database by id", error: e, time: new Date().toISOString()});
+    res.sendStatus(500);
+    return;
+  }
 });
 
 
@@ -327,9 +429,15 @@ app.get(url + "/cards/:id", async (req, res) => {
 // GET, POST, DELETE
 
 app.get(url + "/users/:username/cards", async (req, res) => {
-  const username = req.params.username;
-  const cards = await client.query(queries.getAllUserCards(username));
-  res.json({ cards: cards.rows });
+  try{
+    const username = req.params.username;
+    const cards = await client.query(queries.getAllUserCards(username));
+    res.json({ cards: cards.rows });
+  } catch (e) {
+    errorLogger.error({errorMessage: "Could not get list of all cards for user", error: e, time: new Date().toISOString()});
+    res.sendStatus(500);
+    return;
+  }
 });
 
 app.post(url + "/users/:username/cards", jsonParser, async (req, res) => {
@@ -358,6 +466,7 @@ app.post(url + "/users/:username/cards", jsonParser, async (req, res) => {
     res.sendStatus(200);
     return;
   } catch (e) {
+    errorLogger.error({errorMessage: "Could not add card to user", error: e, time: new Date().toISOString()});
     res.sendStatus(500);
     return;
   }
@@ -381,6 +490,7 @@ app.delete(url + "/users/:username/cards/:id", async (req, res) => {
     res.sendStatus(200);
     return;
   } catch (e) {
+    errorLogger.error({errorMessage: "Could not remove card from user", error: e, time: new Date().toISOString()});
     res.sendStatus(500);
     return;
   }
@@ -392,7 +502,13 @@ app.delete(url + "/users/:username/cards/:id", async (req, res) => {
 // pack opening
 
 app.get(url + "/current-time", (req, res) => {
-  res.json({ time: new Date().toISOString() });
+  try{
+    res.json({ time: new Date().toISOString() });
+  } catch (e) {
+    errorLogger.error({errorMessage: "Could not get current time", error: e, time: new Date().toISOString()});
+    res.sendStatus(500);
+    return;
+  }
 });
 
 app.get(url + "/open-pack", async (req, res) => {
@@ -426,6 +542,7 @@ app.get(url + "/open-pack", async (req, res) => {
   }
   catch(e){
     await client.query("ROLLBACK");
+    errorLogger.error({errorMessage: "Could not open pack", error: e, time: new Date().toISOString()});
     res.sendStatus(500);
     return;
   }
@@ -437,49 +554,7 @@ app.get(url + "/open-pack", async (req, res) => {
 // trade offers
 
 app.get(url + "/trade-offers", async (req, res) => {
-  const tradeOffers = await client.query(queries.getAllTradeOffers());
-  for(let tradeOffer of tradeOffers.rows){
-    const offeringCards = await client.query(queries.getOfferedCardsForTradeOffer(tradeOffer.id));
-    const wantingCards = await client.query(queries.getWantedCardsForTradeOffer(tradeOffer.id));
-    tradeOffer.offering = offeringCards.rows;
-    tradeOffer.wanting = wantingCards.rows;
-  }
-  res.json({ tradeOffers: tradeOffers.rows });
-});
-
-app.post(url + "/trade-offers", jsonParser, async (req, res) => {
-  if (!req.session.user) {
-    res.sendStatus(401);
-    return;
-  }
-
-  const username = req.session.user.username;
-  const { offering, wanting } = req.body; // array of card objects with attribute id_card
-  const offeringIds = offering.map(card => card.id_card); //createOfferingCards expects array of ids
-  const wantingIds = wanting.map(card => card.id_card); //same
-
-  // first we check if user has all the cards he is offering
-  const userCards = await client.query(queries.getAllUserCards(username));
-  const userCardsIds = userCards.rows.map(card => card.id);
-  for(let cardId of offeringIds){
-    if(!userCardsIds.includes(cardId)){
-      res.status(400).json({ message: "User does not have all the cards he is offering"});
-      return;
-    }
-    userCardsIds.filter(id => id !== cardId); // remove card from userCardsIds, needed when multiple of same card
-  }
-
-  client.query("BEGIN");
   try{
-    const result = await client.query(queries.createTradeOffer(username));
-    const id = result.rows[0].id;
-
-    await client.query(queries.createOfferingCards(id, offeringIds));
-    await client.query(queries.createWantingCards(id, wantingIds));
-
-    await client.query("COMMIT");
-
-    // send an updated list of trade offers back
     const tradeOffers = await client.query(queries.getAllTradeOffers());
     for(let tradeOffer of tradeOffers.rows){
       const offeringCards = await client.query(queries.getOfferedCardsForTradeOffer(tradeOffer.id));
@@ -487,10 +562,65 @@ app.post(url + "/trade-offers", jsonParser, async (req, res) => {
       tradeOffer.offering = offeringCards.rows;
       tradeOffer.wanting = wantingCards.rows;
     }
+    res.json({ tradeOffers: tradeOffers.rows });
+  } catch (e) {
+    errorLogger.error({errorMessage: "Could not get list of all trade offers", error: e, time: new Date().toISOString()});
+    res.sendStatus(500);
+    return;
+  }
+});
 
-    res.status(201).json({ tradeOffers: tradeOffers.rows });
-  }catch(e){
-    await client.query("ROLLBACK");
+app.post(url + "/trade-offers", jsonParser, async (req, res) => {
+  try{
+    if (!req.session.user) {
+      res.sendStatus(401);
+      return;
+    }
+
+    const username = req.session.user.username;
+    const { offering, wanting } = req.body; // array of card objects with attribute id_card
+    const offeringIds = offering.map(card => card.id_card); //createOfferingCards expects array of ids
+    const wantingIds = wanting.map(card => card.id_card); //same
+
+    // first we check if user has all the cards he is offering
+    const userCards = await client.query(queries.getAllUserCards(username));
+    const userCardsIds = userCards.rows.map(card => card.id);
+    for(let cardId of offeringIds){
+      if(!userCardsIds.includes(cardId)){
+        res.status(400).json({ message: "User does not have all the cards he is offering"});
+        return;
+      }
+      userCardsIds.filter(id => id !== cardId); // remove card from userCardsIds, needed when multiple of same card
+    }
+
+    client.query("BEGIN");
+    try{
+      const result = await client.query(queries.createTradeOffer(username));
+      const id = result.rows[0].id;
+
+      await client.query(queries.createOfferingCards(id, offeringIds));
+      await client.query(queries.createWantingCards(id, wantingIds));
+
+      await client.query("COMMIT");
+
+      // send an updated list of trade offers back
+      const tradeOffers = await client.query(queries.getAllTradeOffers());
+      for(let tradeOffer of tradeOffers.rows){
+        const offeringCards = await client.query(queries.getOfferedCardsForTradeOffer(tradeOffer.id));
+        const wantingCards = await client.query(queries.getWantedCardsForTradeOffer(tradeOffer.id));
+        tradeOffer.offering = offeringCards.rows;
+        tradeOffer.wanting = wantingCards.rows;
+      }
+
+      res.status(201).json({ tradeOffers: tradeOffers.rows });
+    }catch(e){
+      await client.query("ROLLBACK");
+      errorLogger.error({errorMessage: "Could not create trade offer", error: e, time: new Date().toISOString()});
+      res.sendStatus(500);
+      return;
+    }
+  } catch (e) {
+    errorLogger.error({errorMessage: "Could not prepare trade offer", error: e, time: new Date().toISOString()});
     res.sendStatus(500);
     return;
   }
@@ -498,26 +628,33 @@ app.post(url + "/trade-offers", jsonParser, async (req, res) => {
 
 
 app.delete(url + "/trade-offers/:id", async (req, res) => {
-  const id = req.params.id;
-  // admin only or user deleting their own trade offer
-  if(!req.session.user){
-    res.sendStatus(401);
-    return;
-  }
+  try{
+    const id = req.params.id;
+    // admin only or user deleting their own trade offer
+    if(!req.session.user){
+      res.sendStatus(401);
+      return;
+    }
 
-  // need to find out who created the trade offer
-  const tradeOffer = await client.query(queries.getTradeOffer(id));
-  const username = tradeOffer.rows[0].username;
-  if (!req.session.user.admin && req.session.user.username !== username) {
-    res.sendStatus(403);
-    return;
-  }
+    // need to find out who created the trade offer
+    const tradeOffer = await client.query(queries.getTradeOffer(id));
+    const username = tradeOffer.rows[0].username;
+    if (!req.session.user.admin && req.session.user.username !== username) {
+      res.sendStatus(403);
+      return;
+    }
 
-  try {
-    await client.query(queries.deleteTradeOffer(id));
-    res.sendStatus(200);
-    return;
+    try {
+      await client.query(queries.deleteTradeOffer(id));
+      res.sendStatus(200);
+      return;
+    } catch (e) {
+      errorLogger.error({errorMessage: "Could not delete trade offer", error: e, time: new Date().toISOString()});
+      res.sendStatus(500);
+      return;
+    }
   } catch (e) {
+    errorLogger.error({errorMessage: "Could not prepare trade offer for deletion", error: e, time: new Date().toISOString()});
     res.sendStatus(500);
     return;
   }
@@ -525,15 +662,21 @@ app.delete(url + "/trade-offers/:id", async (req, res) => {
 
 
 app.get(url + "/trade-offers/:username", async (req, res) => {
-  const username = req.params.username;
-  const tradeOffers = await client.query(queries.getTradeOffersForUser(username));
-  for(let tradeOffer of tradeOffers.rows){
-    const offeringCards = await client.query(queries.getOfferedCardsForTradeOffer(tradeOffer.id));
-    const wantingCards = await client.query(queries.getWantedCardsForTradeOffer(tradeOffer.id));
-    tradeOffer.offering = offeringCards.rows;
-    tradeOffer.wanting = wantingCards.rows;
+  try{
+    const username = req.params.username;
+    const tradeOffers = await client.query(queries.getTradeOffersForUser(username));
+    for(let tradeOffer of tradeOffers.rows){
+      const offeringCards = await client.query(queries.getOfferedCardsForTradeOffer(tradeOffer.id));
+      const wantingCards = await client.query(queries.getWantedCardsForTradeOffer(tradeOffer.id));
+      tradeOffer.offering = offeringCards.rows;
+      tradeOffer.wanting = wantingCards.rows;
+    }
+    res.json({ tradeOffers: tradeOffers.rows });
+  } catch (e) {
+    errorLogger.error({errorMessage: "Could not get list of all trade offers for user", error: e, time: new Date().toISOString()});
+    res.sendStatus(500);
+    return;
   }
-  res.json({ tradeOffers: tradeOffers.rows });
 });
 
 
@@ -654,6 +797,7 @@ app.post(url + "/trade-offers/accept/:id", async (req, res) => {
 
   } catch (e) {
     await client.query("ROLLBACK");
+    errorLogger.error({errorMessage: "Could not accept trade offer", error: e, time: new Date().toISOString()});
     res.sendStatus(500);
     return;
     }
@@ -698,6 +842,7 @@ async function initializeDatabase(){
   
   } catch (e) {
     console.log(e);
+    errorLogger.error({errorMessage: "Could not initialize database", error: e, time: new Date().toISOString()});
     await client.query("ROLLBACK");
   }
 }
@@ -720,6 +865,7 @@ async function initializeOwnership(){
     await client.query("COMMIT")
   }
   catch(e){
+    errorLogger.error({errorMessage: "Could not initialize ownership table", error: e, time: new Date().toISOString()});
     await client.query("ROLLBACK");
   }
 }
@@ -759,6 +905,7 @@ async function initializeTradeOffers(){
       await client.query("COMMIT")
   }catch(e){
     console.log(e);
+    errorLogger.error({errorMessage: "Could not initialize trade offers table", error: e, time: new Date().toISOString()});
     await client.query("ROLLBACK");
   }
 
