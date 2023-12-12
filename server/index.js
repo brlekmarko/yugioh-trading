@@ -38,6 +38,7 @@ app.use((req, res, next) => {
   logger.info({
     method: req.method,
     url: req.url,
+    ip: req.ip,
     time: new Date().toISOString(),
     body: req.body,
     session: req.session,
