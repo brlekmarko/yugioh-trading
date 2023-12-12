@@ -1,0 +1,404 @@
+{
+    "message" : "This is a documentation on how to use the API. Api is available at /api",
+    "authorizationMessage": "For some routes you need to be authorized. To do so, send your connect.sid cookie with the request.",
+    "routes": [
+        {
+            "route": "/login",
+            "method": "POST",
+            "description": "Login to the system",
+            "exampleUrl": "POST /login",
+            "exampleBody": {
+                "username": "admin",
+                "password": "admin"
+            },
+            "return": {}
+        },
+        {
+            "route": "/logout",
+            "method": "POST",
+            "description": "Logout from the system, need to be authorized",
+            "exampleUrl": "POST /logout",
+            "exampleBody": {},
+            "return": {}
+        },
+        {
+            "route": "/user",
+            "method": "GET",
+            "description": "Get current user based on connect.sid cookie, need to be authorized",
+            "exampleUrl": "GET /user",
+            "exampleBody": {},
+            "return": {
+                "user": {
+                    "username": "username",
+                    "first_name": "User",
+                    "last_name": "Name",
+                    "hashedpass": "48b9df6feaa43adba22274ccc79cc7609af35a1f4fe21d660586a07e46f513f796e05c73fc45931ea4bfb2",
+                    "salt": "35asd4c629asd1f242e34a24d30",
+                    "last_pack_opening": "2023-12-06T11:25:30.970Z",
+                    "admin": false
+                }
+            }
+        },
+        {
+            "route": "/users",
+            "method": "GET",
+            "description": "Get all users (ADMIN ONLY)",
+            "exampleUrl": "GET /users",
+            "exampleBody": {},
+            "return": {
+                "users": [
+                    {
+                        "username": "username",
+                        "first_name": "User",
+                        "last_name": "Name",
+                        "hashedpass": "48b9df6feaa43adba22274ccc79cc7609af35a1f4fe21d660586a07e46f513f796e05c73fc45931ea4bfb2",
+                        "salt": "35asd4c629asd1f242e34a24d30",
+                        "last_pack_opening": "2023-12-06T11:25:30.970Z",
+                        "admin": false
+                    },
+                    {
+                        "username": "username2",
+                        "first_name": "User2",
+                        "last_name": "Name2",
+                        "hashedpass": "48b9df6feaa43adba22274ccc79cc7609af35a1f4fe21d660586a07e46f513f796e05c73fc45931ea4bfb2",
+                        "salt": "35asd4c629asd1f242e34a24d30",
+                        "last_pack_opening": "2023-12-06T11:25:30.970Z",
+                        "admin": false
+                    }
+                ]
+            }
+        },
+        {
+            "route": "/users",
+            "method": "POST",
+            "description": "Create new user",
+            "exampleUrl": "POST /users",
+            "exampleBody": {
+                "username": "username",
+                "first_name": "User",
+                "last_name": "Name",
+                "password": "password",
+                "admin": false
+            },
+            "return": {
+                "user": {
+                    "username": "username",
+                    "first_name": "User",
+                    "last_name": "Name",
+                    "hashedpass": "48b9df6feaa43adba22274ccc79cc7609af35a1f4fe21d660586a07e46f513f796e05c73fc45931ea4bfb2",
+                    "salt": "35asd4c629asd1f242e34a24d30",
+                    "last_pack_opening": "2023-12-06T11:25:30.970Z",
+                    "admin": false
+                }
+            }
+        },
+        {
+            "route": "/users",
+            "method": "PUT",
+            "description": "Update user with data from body (ADMIN ONLY)",
+            "exampleUrl": "PUT /users",
+            "exampleBody": {
+                "username": "username",
+                "first_name": "User",
+                "last_name": "Name",
+                "hashedpass": "48b9df6feaa43adba22274ccc79cc7609af35a1f4fe21d660586a07e46f513f796e05c73fc45931ea4bfb2",
+                "salt": "35asd4c629asd1f242e34a24d30",
+                "last_pack_opening": "2023-12-06T11:25:30.970Z",
+                "admin": false
+            },
+            "return": {}
+        },
+        {
+            "route": "/users/:username",
+            "method": "DELETE",
+            "description": "Delete user with username from query (ADMIN ONLY OR OWN USER)",
+            "exampleUrl": "DELETE /users/username2",
+            "exampleBody": {},
+            "return": {}
+        },
+        {
+            "route": "/users/:username",
+            "method": "GET",
+            "description": "Get user with username from query",
+            "exampleUrl": "GET /users/username2",
+            "exampleBody": {},
+            "return": {
+                "user": {
+                    "username": "username2",
+                    "first_name": "User2",
+                    "last_name": "Name2",
+                    "hashedpass": "48b9df6feaa43adba22274ccc79cc7609af35a1f4fe21d660586a07e46f513f796e05c73fc45931ea4bfb2",
+                    "salt": "35asd4c629asd1f242e34a24d30",
+                    "last_pack_opening": "2023-12-06T11:25:30.970Z",
+                    "admin": false
+                }
+            }
+        },
+        {
+            "route": "/cards",
+            "method": "GET",
+            "description": "Get all cards from database",
+            "exampleUrl": "GET /cards",
+            "exampleBody": {},
+            "return": {
+                "cards": [
+                    {
+                        "id": 1,
+                        "name": "Winged Kuriboh",
+                        "type": "monster",
+                        "description": "He is your starter card. Be gentle with him, he's fragile.",
+                        "image": "https://ms.yugipedia.com//thumb/a/a4/WingedKuriboh-SGX2-EN-C-1E.png/300px-WingedKuriboh-SGX2-EN-C-1E.png"
+                    },
+                    {
+                        "id": 2,
+                        "name": "Winged Kuriboh LV10",
+                        "type": "monster",
+                        "description": "He is a stronger version of the original Winged Kuriboh. He is still fragile, but he can pack a punch.",
+                        "image": "https://ms.yugipedia.com//thumb/b/bc/WingedKuribohLV10-AC19-EN-SR-1E.png/300px-WingedKuribohLV10-AC19-EN-SR-1E.png"
+                    }
+                ]
+            }
+        },
+        {
+            "route": "/cards",
+            "method": "POST",
+            "description": "Create new card (ADMIN ONLY)",
+            "exampleUrl": "POST /cards",
+            "exampleBody": {
+                "name": "Winged Kuriboh",
+                "type": "monster",
+                "description": "He is your starter card. Be gentle with him, he's fragile.",
+                "image": "https://ms.yugipedia.com//thumb/a/a4/WingedKuriboh-SGX2-EN-C-1E.png/300px-WingedKuriboh-SGX2-EN-C-1E.png"
+            },
+            "return":{
+                "id": 1
+            }
+        },
+        {
+            "route": "/cards",
+            "method": "PUT",
+            "description": "Update card with data from body (ADMIN ONLY)",
+            "exampleUrl": "PUT /cards",
+            "exampleBody": {
+                "id": 1,
+                "name": "Winged Kuriboh",
+                "type": "monster",
+                "description": "He is your starter card. Be gentle with him, he's fragile.",
+                "image": "https://ms.yugipedia.com//thumb/a/a4/WingedKuriboh-SGX2-EN-C-1E.png/300px-WingedKuriboh-SGX2-EN-C-1E.png"
+            },
+            "return": {}
+        },
+        {
+            "route": "/cards/:id",
+            "method": "DELETE",
+            "description": "Delete card with id from query (ADMIN ONLY)",
+            "exampleUrl": "DELETE /cards/1",
+            "exampleBody": {},
+            "return": {}
+        },
+        {
+            "route": "/cards/:id",
+            "method": "GET",
+            "description": "Get card with id from query",
+            "exampleUrl": "GET /cards/1",
+            "exampleBody": {},
+            "return": {
+                "card": {
+                    "id": 1,
+                    "name": "Winged Kuriboh",
+                    "type": "monster",
+                    "description": "He is your starter card. Be gentle with him, he's fragile.",
+                    "image": "https://ms.yugipedia.com//thumb/a/a4/WingedKuriboh-SGX2-EN-C-1E.png/300px-WingedKuriboh-SGX2-EN-C-1E.png"
+                }
+            }
+        },
+        {
+            "route": "/users/:username/cards",
+            "method": "GET",
+            "description": "Get all cards from user with username from query",
+            "exampleUrl": "GET /users/username/cards",
+            "exampleBody": {},
+            "return": {
+                "cards": [
+                    {
+                        "id": 1,
+                        "name": "Winged Kuriboh",
+                        "type": "monster",
+                        "description": "He is your starter card. Be gentle with him, he's fragile.",
+                        "image": "https://ms.yugipedia.com//thumb/a/a4/WingedKuriboh-SGX2-EN-C-1E.png/300px-WingedKuriboh-SGX2-EN-C-1E.png"
+                    },
+                    {
+                        "id": 2,
+                        "name": "Winged Kuriboh LV10",
+                        "type": "monster",
+                        "description": "He is a stronger version of the original Winged Kuriboh. He is still fragile, but he can pack a punch.",
+                        "image": "https://ms.yugipedia.com//thumb/b/bc/WingedKuribohLV10-AC19-EN-SR-1E.png/300px-WingedKuribohLV10-AC19-EN-SR-1E.png"
+                    }
+                ]
+            }
+        },
+        {
+            "route": "/users/:username/cards",
+            "method": "POST",
+            "description": "Add card with id from body to user with username from query (ADMIN ONLY)",
+            "exampleUrl": "POST /users/username/cards",
+            "exampleBody": {
+                "id": 1
+            },
+            "return": {}
+        },
+        {
+            "route": "/users/:username/cards/:id",
+            "method": "DELETE",
+            "description": "Delete card with id from query from user with username from query (ADMIN ONLY)",
+            "exampleUrl": "DELETE /users/username/cards/1",
+            "exampleBody": {},
+            "return": {}
+        },
+        {
+            "route": "/current-time",
+            "method": "GET",
+            "description": "Get current time on server",
+            "exampleUrl": "GET /current-time",
+            "exampleBody": {},
+            "return": {
+                "time": "2020-12-06T11:25:30.970Z"
+            }
+        },
+        {
+            "route": "/open-pack",
+            "method": "GET",
+            "description": "Open a pack and recieve 2 random cards, need to be authorized",
+            "exampleUrl": "GET /open-pack",
+            "exampleBody": {},
+            "return": {
+                "cards":[
+                    {
+                        "id": 1,
+                        "name": "Winged Kuriboh",
+                        "type": "monster",
+                        "description": "He is your starter card. Be gentle with him, he's fragile.",
+                        "image": "https://ms.yugipedia.com//thumb/a/a4/WingedKuriboh-SGX2-EN-C-1E.png/300px-WingedKuriboh-SGX2-EN-C-1E.png"
+                    },
+                    {
+                        "id": 2,
+                        "name": "Winged Kuriboh LV10",
+                        "type": "monster",
+                        "description": "He is a stronger version of the original Winged Kuriboh. He is still fragile, but he can pack a punch.",
+                        "image": "https://ms.yugipedia.com//thumb/b/bc/WingedKuribohLV10-AC19-EN-SR-1E.png/300px-WingedKuribohLV10-AC19-EN-SR-1E.png"
+                    }
+                ]
+            }
+        },
+        {
+            "route": "/trade-offers",
+            "method": "GET",
+            "description": "Get all trade offers",
+            "exampleUrl": "GET /trade-offers",
+            "exampleBody": {},
+            "return": {
+                "tradeOffers": [
+                    {
+                        "id": 2,
+                        "username": "testuser",
+                        "last_edit": "2023-12-06T14:19:49.545Z",
+                        "offering": [
+                            {
+                                "id_card": 14,
+                                "name": "Graceful Charity",
+                                "type": "spell",
+                                "description": "Similar to Pot of Greed, but you have to discard two cards from your hand. It is also banned in tournaments.",
+                                "image": "https://ms.yugipedia.com//thumb/a/af/GracefulCharity-BP02-EN-R-1E.png/300px-GracefulCharity-BP02-EN-R-1E.png"
+                            }
+                        ],
+                        "wanting": [
+                            {
+                                "id_card": 13,
+                                "name": "Polymerization",
+                                "type": "spell",
+                                "description": "Some decks are built around this card, like Jaiden's Elemental Hero deck. It allows you to fuse two monsters together to create a stronger monster.",
+                                "image": "https://ms.yugipedia.com//thumb/7/73/Polymerization-SBC1-EN-C-1E.png/300px-Polymerization-SBC1-EN-C-1E.png"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "route": "/trade-offers",
+            "method": "POST",
+            "description": "Create new trade offer, need to be authorized",
+            "exampleUrl": "POST /trade-offers",
+            "exampleBody":{
+                "offering":[
+                    {
+                        "id_card": 1,
+                        "name": "Graceful Charity",
+                        "type": "spell",
+                        "description": "Similar to Pot of Greed, but you have to discard two cards from your hand. It is also banned in tournaments.",
+                        "image": "https://ms.yugipedia.com//thumb/a/af/GracefulCharity-BP02-EN-R-1E.png/300px-GracefulCharity-BP02-EN-R-1E.png"
+                    }
+                ],
+                "wanting":[
+                    {
+                        "id_card": 2,
+                        "name": "Polymerization",
+                        "type": "spell",
+                        "description": "Some decks are built around this card, like Jaiden's Elemental Hero deck. It allows you to fuse two monsters together to create a stronger monster.",
+                        "image": "https://ms.yugipedia.com//thumb/7/73/Polymerization-SBC1-EN-C-1E.png/300px-Polymerization-SBC1-EN-C-1E.png"
+                    }
+                ]
+            }
+        },
+        {
+            "route": "/trade-offers/:id",
+            "method": "DELETE",
+            "description": "Delete trade offer with id from query (ADMIN ONLY OR OWN TRADE OFFER)",
+            "exampleUrl": "DELETE /trade-offers/1",
+            "exampleBody": {},
+            "return": {}
+        },
+        {
+            "route": "/trade-offers/:username",
+            "method": "GET",
+            "description": "Get all trade offers from user with username from query",
+            "exampleUrl": "GET /trade-offers/username",
+            "exampleBody": {},
+            "return": {
+                "tradeOffers": [
+                    {
+                        "id": 2,
+                        "username": "username",
+                        "last_edit": "2023-12-06T14:19:49.545Z",
+                        "offering": [
+                            {
+                                "id_card": 14,
+                                "name": "Graceful Charity",
+                                "type": "spell",
+                                "description": "Similar to Pot of Greed, but you have to discard two cards from your hand. It is also banned in tournaments.",
+                                "image": "https://ms.yugipedia.com//thumb/a/af/GracefulCharity-BP02-EN-R-1E.png/300px-GracefulCharity-BP02-EN-R-1E.png"
+                            }
+                        ],
+                        "wanting": [
+                            {
+                                "id_card": 13,
+                                "name": "Polymerization",
+                                "type": "spell",
+                                "description": "Some decks are built around this card, like Jaiden's Elemental Hero deck. It allows you to fuse two monsters together to create a stronger monster.",
+                                "image": "https://ms.yugipedia.com//thumb/7/73/Polymerization-SBC1-EN-C-1E.png/300px-Polymerization-SBC1-EN-C-1E.png"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "route": "/trade-offers/accept/:id",
+            "method": "POST",
+            "description": "Accept trade offer with id from query, need to be authorized",
+            "exampleUrl": "POST /trade-offers/accept/1",
+            "exampleBody": {},
+            "return": {}
+        }
+    ]
+}

@@ -11,6 +11,7 @@ import { InputText } from "primereact/inputtext";
 import { Dialog } from 'primereact/dialog';
 import { InputTextarea } from "primereact/inputtextarea";
 import { Dropdown } from "primereact/dropdown";
+import { prefix } from "../..";
 
 export default function AdminPage(){
 
@@ -123,7 +124,7 @@ export default function AdminPage(){
                     <DataTable value={users.filter(user => user.username.toLowerCase().includes(searchUsers.toLowerCase()))} scrollable scrollHeight="300px"
                         style={{border: "1px solid black"}}>
                     <Column header="Username" body={(rowData:any) =>
-                            <a href={"/profile/" + rowData.username} target="_blank" rel="noreferrer">{rowData.username}</a>
+                            <a href={prefix + "/profile/" + rowData.username} target="_blank" rel="noreferrer">{rowData.username}</a>
                         }></Column>
                         <Column field="first_name" header="First Name"></Column>
                         <Column field="last_name" header="Last Name"></Column>
@@ -145,7 +146,7 @@ export default function AdminPage(){
                     </div>
                     <DataTable value={cards.filter(card => card.name.toLowerCase().includes(searchCards.toLowerCase())).sort((a,b) => b.id - a.id)}>
                         <Column header="Name" body={(rowData:any) =>
-                            <a href={"/card/" + rowData.id} target="_blank" rel="noreferrer">{rowData.name}</a>
+                            <a href={prefix + "/card/" + rowData.id} target="_blank" rel="noreferrer">{rowData.name}</a>
                         }></Column>
                         <Column field="type" header="Type"></Column>
                         <Column field="description" header="Description"></Column>

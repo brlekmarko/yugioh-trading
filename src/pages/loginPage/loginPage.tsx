@@ -4,6 +4,7 @@ import { Button } from 'primereact/button';
 import { loginUser } from "../../apiCalls/userApi";
 import { Password } from 'primereact/password';
 import './loginPage.css';
+import { prefix } from "../..";
 
 export default function LoginPage() {
 
@@ -19,7 +20,7 @@ export default function LoginPage() {
 
         try{
             let res : any = await loginUser(username, password);
-            window.location.href = '/';
+            window.location.href = prefix;
             return;
         }
         catch(err){
@@ -47,7 +48,7 @@ export default function LoginPage() {
 
                 <Button onClick={login}>Login</Button>
             </div>
-            <p>Don't have an account? <a href="/register">Register here</a></p>
+            <p>Don't have an account? <a href={prefix + "/register"}>Register here</a></p>
         </div>
     );
 }

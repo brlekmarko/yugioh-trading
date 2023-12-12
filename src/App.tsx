@@ -12,6 +12,7 @@ import RegisterPage from './pages/registerPage/registerPage';
 import AdminPage from './pages/adminPage/adminPage';
 import ProfilePage from './pages/profilePage/profilePage';
 import CardPage from './pages/cardPage/cardPage';
+import {prefix} from './index';
 
 function App() {
 
@@ -40,7 +41,7 @@ function App() {
   async function logout() {
     await logoutUser();
     setUser(undefined);
-    window.location.href = "/";
+    window.location.href = prefix
   }
 
 
@@ -49,9 +50,9 @@ function App() {
       <header className="App-header">
         {user ? <>
           <span className="left-align-header">
-            <a className="header-link" href="/">Home</a>
-            {user.admin && <a className="header-link" href="/admin">Admin</a>}
-            <a className="header-link" href={"/profile/" + user.username}>Profile</a>
+            <a className="header-link" href={prefix + "/"}>Home</a>
+            {user.admin && <a className="header-link" href={prefix + "/admin"}>Admin</a>}
+            <a className="header-link" href={prefix + "/profile/" + user.username}>Profile</a>
           </span>
           <span className="right-align-header">
             {user.first_name + ' ' + user.last_name}
@@ -61,7 +62,7 @@ function App() {
           
         </> : <>
           <span className="left-align-header">
-            <a className="header-link" href="/">Home</a>
+            <a className="header-link" href={prefix + "/"}>Home</a>
           </span>
           <span className="right-align-header">
           <Button onClick={login}>Login</Button>

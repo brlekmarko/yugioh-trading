@@ -12,6 +12,7 @@ import { Card, CardFromOffer } from "../../interfaces/card";
 import { Dialog } from "primereact/dialog";
 import { MultiSelect } from "primereact/multiselect";
 import './homePage.css';
+import { prefix } from "../../index";
 
 export default function HomePage() {
 
@@ -275,13 +276,13 @@ export default function HomePage() {
                 <DataTable value={tradeOffers?.sort((a,b) => new Date(b.last_edit).getTime() - new Date(a.last_edit).getTime())} showGridlines>
 
                     <Column header="Username" body={(rowData:TradeOfferWithCards) =>
-                        <a href={"/profile/" + rowData.username} target="_blank" rel="noreferrer">{rowData.username}</a>
+                        <a href={prefix + "/profile/" + rowData.username} target="_blank" rel="noreferrer">{rowData.username}</a>
                     }></Column>
 
                     <Column header="Offering" body={(rowData:TradeOfferWithCards) =>
                         <div className="trade-offer-cards">
                             {rowData.offering.map((card:CardFromOffer) => 
-                                <a href={"/card/" + card.id_card} target="_blank" rel="noreferrer">
+                                <a href={prefix + "/card/" + card.id_card} target="_blank" rel="noreferrer">
                                     <img src={card.image} alt={card.name} width={100} height={150}/>
                                 </a>
                             )}
@@ -291,7 +292,7 @@ export default function HomePage() {
                     <Column header="Wanting" body={(rowData:any) =>
                         <div className="trade-offer-cards">
                             {rowData.wanting.map((card:CardFromOffer) => 
-                                <a href={"/card/" + card.id_card} target="_blank" rel="noreferrer">
+                                <a href={prefix + "/card/" + card.id_card} target="_blank" rel="noreferrer">
                                     <img src={card.image} alt={card.name} width={100} height={150}/>
                                 </a>
                             )}

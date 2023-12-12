@@ -10,6 +10,7 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { TradeOfferWithCards } from "../../interfaces/trade_offer";
 import { deleteTradeOffer, getTradeOffersForUser } from "../../apiCalls/tradeApi";
+import { prefix } from "../..";
 
 export default function ProfilePage(){
 
@@ -33,7 +34,7 @@ export default function ProfilePage(){
         // if we delete our own user, logout
         // if admin deletes user, keep logged in
         if(myUser?.username === username) await logoutUser();
-        window.location.href = "/";
+        window.location.href = prefix;
     }
 
     async function fetchUserCards(username: string){
@@ -151,13 +152,13 @@ export default function ProfilePage(){
                     <DataTable value={tradeOffers?.sort((a,b) => new Date(b.last_edit).getTime() - new Date(a.last_edit).getTime())} showGridlines>
 
                     <Column header="Username" body={(rowData:TradeOfferWithCards) =>
-                        <a href={"/profile/" + rowData.username} target="_blank" rel="noreferrer">{rowData.username}</a>
+                        <a href={prefix + "/profile/" + rowData.username} target="_blank" rel="noreferrer">{rowData.username}</a>
                     }></Column>
 
                     <Column header="Offering" body={(rowData:TradeOfferWithCards) =>
                         <div className="trade-offer-cards">
                             {rowData.offering.map((card:CardFromOffer) => 
-                                <a href={"/card/" + card.id_card} target="_blank" rel="noreferrer">
+                                <a href={prefix + "/card/" + card.id_card} target="_blank" rel="noreferrer">
                                     <img src={card.image} alt={card.name} width={100} height={150}/>
                                 </a>
                             )}
@@ -167,7 +168,7 @@ export default function ProfilePage(){
                     <Column header="Wanting" body={(rowData:any) =>
                         <div className="trade-offer-cards">
                             {rowData.wanting.map((card:CardFromOffer) => 
-                                <a href={"/card/" + card.id_card} target="_blank" rel="noreferrer">
+                                <a href={prefix + "/card/" + card.id_card} target="_blank" rel="noreferrer">
                                     <img src={card.image} alt={card.name} width={100} height={150}/>
                                 </a>
                             )}
@@ -198,7 +199,7 @@ export default function ProfilePage(){
                     ).map(card => {
                         return (
                         <>
-                            <a href={"/card/" + card.id}><img src={card.image} alt={card.name} width={200} height={300}/></a>
+                            <a href={prefix + "/card/" + card.id}><img src={card.image} alt={card.name} width={200} height={300}/></a>
                         </>
                         )
                     })}
@@ -213,7 +214,7 @@ export default function ProfilePage(){
                     ).map(card => {
                         return (
                         <>
-                            <a href={"/card/" + card.id}><img src={card.image} alt={card.name} width={200} height={300}/></a>
+                            <a href={prefix + "/card/" + card.id}><img src={card.image} alt={card.name} width={200} height={300}/></a>
                         </>
                         )
                     })}

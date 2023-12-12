@@ -32,6 +32,21 @@ app.use(cors());
 const url = "/api";
 
 //////////////////////////////////////////////////////
+// get documentation
+app.get("/", async(req, res) => {
+  // open documentation from file doc.txt
+  const fs = require("fs");
+  fs.readFile("doc.json", "utf8", (err, data) => {
+    if(err){
+      res.sendStatus(500);
+      return;
+    }
+    // send it to user as a json object
+    res.send(JSON.parse(data));
+  });
+});
+
+
 //////////////////////////////////////////////////////
 // login, logout, userinfo
 
