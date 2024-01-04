@@ -11,6 +11,8 @@ const crypto = require("crypto");
 const initialDb = require("./database/initialDb");
 require("dotenv").config();
 const winston = require("winston");
+const initialCoins = 10000;
+const coinClaimReward = 5000;
 
 app.use(express.json());
 
@@ -173,8 +175,8 @@ app.post(url + "/users", jsonParser, async (req, res) => {
     const salt = crypto.randomBytes(16).toString("hex"); // generate random salt
     const hashedpass = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha256').toString('hex');
     // make last pack opening 48 hours ago
-    const last_pack_opening = new Date();
-    last_pack_opening.setHours(last_pack_opening.getHours() - 48);
+    const last_coin_claim = new Date();
+    last_coin_claim.setHours(last_coin_claim.getHours() - 48);
 
     const user = {
       username,
@@ -182,8 +184,9 @@ app.post(url + "/users", jsonParser, async (req, res) => {
       last_name,
       hashedpass,
       salt,
-      last_pack_opening: last_pack_opening.toISOString(),
+      last_coin_claim: last_coin_claim.toISOString(),
       admin: false,
+      coins: initialCoins
     };
     try {
       await client.query(queries.createUser(user)); // create user in db
@@ -226,7 +229,7 @@ app.put(url + "/users", jsonParser, async (req, res) => {
     return;
   }
 
-  const { username, hashedpass, salt, first_name, last_name, admin, last_pack_opening} = req.body;
+  const { username, hashedpass, salt, first_name, last_name, admin, last_coin_claim, coins} = req.body;
   const user = {
     username,
     hashedpass,
@@ -234,7 +237,8 @@ app.put(url + "/users", jsonParser, async (req, res) => {
     first_name,
     last_name,
     admin,
-    last_pack_opening
+    last_coin_claim,
+    coins
   };
   try {
     await client.query(queries.updateUser(user));
@@ -522,7 +526,7 @@ app.get(url + "/open-pack", async (req, res) => {
 
     const username = req.session.user.username;
     const user = await client.query(queries.getUser(username));
-    const lastPackOpening = new Date(user.rows[0].last_pack_opening);
+    const lastPackOpening = new Date(user.rows[0].last_coin_claim);
     const now = new Date();
     const timeSinceLastPackOpening = now.getTime() - lastPackOpening.getTime();
     const hoursSinceLastPackOpening = timeSinceLastPackOpening / 1000 / 60 / 60;
@@ -533,17 +537,51 @@ app.get(url + "/open-pack", async (req, res) => {
     const cards = await client.query(queries.getAllCards());
     const randomCard1 = cards.rows[Math.floor(Math.random() * cards.rows.length)]; // get random card
     const randomCard2 = cards.rows[Math.floor(Math.random() * cards.rows.length)];
-    user.rows[0].last_pack_opening = now.toISOString();
+    user.rows[0].last_coin_claim = now.toISOString();
     await client.query(queries.addCardToUser(username, randomCard1));
     await client.query(queries.addCardToUser(username, randomCard2));
     await client.query(queries.updateUser(user.rows[0]));
-    req.session.user.last_pack_opening = now.toISOString();
+    req.session.user.last_coin_claim = now.toISOString();
     await client.query("COMMIT");
     res.json({ cards: [randomCard1, randomCard2] });
   }
   catch(e){
     await client.query("ROLLBACK");
     errorLogger.error({errorMessage: "Could not open pack", error: e, time: new Date().toISOString()});
+    res.sendStatus(500);
+    return;
+  }
+});
+
+app.get(url + "/claim-coins", async (req, res) => {
+  if (!req.session.user) {
+    res.sendStatus(401);
+    return;
+  }
+  client.query("BEGIN");
+  try{
+
+    const username = req.session.user.username;
+    const user = await client.query(queries.getUser(username));
+    const lastCoinClaim = new Date(user.rows[0].last_coin_claim);
+    const now = new Date();
+    const timeSinceLastCoinClaim = now.getTime() - lastCoinClaim.getTime();
+    const hoursSinceLastCoinClaim = timeSinceLastCoinClaim / 1000 / 60 / 60;
+    if (hoursSinceLastCoinClaim < 12) { // if less than 12 hours since last coin claim
+      res.status(400).json({ message: "Need to wait before claiming coins again"});
+      return;
+    }
+    user.rows[0].coins += coinClaimReward;
+    user.rows[0].last_coin_claim = now.toISOString();
+    await client.query(queries.updateUser(user.rows[0]));
+    req.session.user.coins = user.rows[0].coins;
+    req.session.user.last_coin_claim = user.rows[0].last_coin_claim;
+    await client.query("COMMIT");
+    res.json({ coins: user.rows[0].coins, last_coin_claim: user.rows[0].last_coin_claim });
+  }
+  catch(e){
+    await client.query("ROLLBACK");
+    errorLogger.error({errorMessage: "Could not claim coins", error: e, time: new Date().toISOString()});
     res.sendStatus(500);
     return;
   }
@@ -802,6 +840,173 @@ app.post(url + "/trade-offers/accept/:id", async (req, res) => {
     res.sendStatus(500);
     return;
     }
+});
+
+
+//////////////////////////////////////////////////////
+/// PACKS
+//////////////////////////////////////////////////////
+
+app.get(url + "/packs", async (req, res) => {
+  try{
+    const packs = await client.query(queries.getAllPacks());
+    res.json({ packs: packs.rows });
+  } catch (e) {
+    errorLogger.error({errorMessage: "Could not get list of all packs", error: e, time: new Date().toISOString()});
+    res.sendStatus(500);
+    return;
+  }
+});
+
+app.post(url + "/packs", jsonParser, async (req, res) => {
+  // admin only
+  // if not logged in, 401
+  // if not admin, 403
+  if (!req.session.user){
+    res.sendStatus(401);
+    return;
+  }
+  if(!req.session.user.admin){
+    res.sendStatus(403);
+    return;
+  }
+
+  const { name, price, description, image, type, collection } = req.body;
+  const pack = {
+    name,
+    price,
+    description,
+    image,
+    type,
+    collection
+  };
+  try {
+    const result = await client.query(queries.createPack(pack));
+    res.status(201).json({ id: result.rows[0].id });
+  } catch (e) {
+    errorLogger.error({errorMessage: "Could not create new pack", error: e, time: new Date().toISOString()});
+    res.sendStatus(500);
+    return;
+  }
+});
+
+app.put(url + "/packs", jsonParser, async (req, res) => {
+  // admin only
+  // if not logged in, 401
+  // if not admin, 403
+  if (!req.session.user){
+    res.sendStatus(401);
+    return;
+  }
+  if(!req.session.user.admin){
+    res.sendStatus(403);
+    return;
+  }
+
+  const { id, name, price, description, image, type, collection } = req.body;
+  const pack = {
+    id,
+    name,
+    price,
+    description,
+    image,
+    type,
+    collection
+  };
+  try {
+    await client.query(queries.updatePack(pack));
+    res.sendStatus(200);
+    return;
+  } catch (e) {
+    errorLogger.error({errorMessage: "Could not update pack", error: e, time: new Date().toISOString()});
+    res.sendStatus(500);
+    return;
+  }
+});
+
+app.get(url + "/packs/:id", async (req, res) => {
+  try{
+    const id = req.params.id;
+    const pack = await client.query(queries.getPack(id));
+    const cardsInPack = await client.query(queries.getCardsByCollectionAndType(pack.rows[0].collection, pack.rows[0].type));
+    pack.rows[0].cards = cardsInPack.rows;
+    res.json({ pack: pack.rows[0] });
+  } catch (e) {
+    errorLogger.error({errorMessage: "Could not get pack info from database by id", error: e, time: new Date().toISOString()});
+    res.sendStatus(500);
+    return;
+  }
+});
+
+app.delete(url + "/packs/:id", async (req, res) => {
+  // admin only
+  // if not logged in, 401
+  // if not admin, 403
+  if (!req.session.user){
+    res.sendStatus(401);
+    return;
+  }
+  if(!req.session.user.admin){
+    res.sendStatus(403);
+    return;
+  }
+
+  const id = req.params.id;
+  try {
+    await client.query(queries.deletePack(id));
+    res.sendStatus(200);
+    return;
+  } catch (e) {
+    errorLogger.error({errorMessage: "Could not delete pack", error: e, time: new Date().toISOString()});
+    res.sendStatus(500);
+    return;
+  }
+});
+
+app.get(url + "/packs/open/:id", async (req, res) => {
+  if (!req.session.user) {
+    res.sendStatus(401);
+    return;
+  }
+  client.query("BEGIN");
+  try{
+
+    const username = req.session.user.username;
+    const pack = await client.query(queries.getPack(req.params.id));
+
+    // check if user has enough coins
+    const user = await client.query(queries.getUser(username));
+    if(user.rows[0].coins < pack.rows[0].price){
+      res.status(400).json({ message: "Not enough coins to open this pack"});
+      return;
+    }
+
+    // deduce coins from user
+    user.rows[0].coins -= pack.rows[0].price;
+    // fix time format
+    user.rows[0].last_coin_claim = new Date(user.rows[0].last_coin_claim).toISOString();
+    await client.query(queries.updateUser(user.rows[0]));
+    req.session.user.coins = user.rows[0].coins;
+    
+    // get random cards from pack
+    const cards = await client.query(queries.getAllCards());
+
+    const randomCard1 = cards.rows[Math.floor(Math.random() * cards.rows.length)]; // get random card
+    await client.query(queries.addCardToUser(username, randomCard1)); // add card to user
+
+    const randomCard2 = cards.rows[Math.floor(Math.random() * cards.rows.length)];
+    await client.query(queries.addCardToUser(username, randomCard2));
+
+
+    await client.query("COMMIT");
+    res.json({ cards: [randomCard1, randomCard2], coins: user.rows[0].coins });
+  }
+  catch(e){
+    await client.query("ROLLBACK");
+    errorLogger.error({errorMessage: "Could not open pack", error: e, time: new Date().toISOString()});
+    res.sendStatus(500);
+    return;
+  }
 });
 
 

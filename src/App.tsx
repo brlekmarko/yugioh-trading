@@ -12,6 +12,7 @@ import RegisterPage from './pages/registerPage/registerPage';
 import AdminPage from './pages/adminPage/adminPage';
 import ProfilePage from './pages/profilePage/profilePage';
 import CardPage from './pages/cardPage/cardPage';
+import PacksPage from './pages/packsPage/packsPage';
 
 function App() {
 
@@ -52,6 +53,7 @@ function App() {
             <a className="header-link" href="/">Home</a>
             {user.admin && <a className="header-link" href="/admin">Admin</a>}
             <a className="header-link" href={"/profile/" + user.username}>Profile</a>
+            <a className="header-link" href="/packs">Packs</a>
           </span>
           <span className="right-align-header">
             {user.first_name + ' ' + user.last_name}
@@ -93,6 +95,10 @@ function App() {
         <Route
             path={"/card/:id"}
             element={<CardPage />}
+        />
+        <Route
+            path={"/packs"}
+            element={<PacksPage />}
         />
         <Route
             path="*"

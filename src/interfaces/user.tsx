@@ -5,6 +5,7 @@ export interface User {
     hashedpass: string;
     salt: string;
     admin: boolean;
-    last_pack_opening: string;
+    last_coin_claim: string;
+    coins: number;
 }
 

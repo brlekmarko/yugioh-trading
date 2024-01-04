@@ -1,0 +1,61 @@
+.pack-opening{
+    margin-top: 20px;
+}
+
+.transparent-dialog .p-dialog-header, .transparent-dialog .p-dialog-content, .transparent-dialog .p-dialog-footer{
+    background-color: transparent;
+    border: none;
+}
+
+.transparent-dialog .p-dialog-header .p-dialog-header-icon{
+    color: red;
+    background-color: black;
+}
+
+.transparent-dialog.p-dialog{
+    box-shadow: none;
+}
+
+.p-dialog-mask {
+    background-color: rgba(0, 0, 0, 0.8) !important;
+}
+
+.new-cards-content{
+    display:flex;
+    flex-direction:row;
+    justify-content:space-between;
+    align-items:center;
+    margin: 0 0 10px 0;
+    width: 100%;
+}
+
+@keyframes fadeInFromTop {
+    0% {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+.animated-card-image-old {
+    animation: fadeInFromTop 0.5s ease-out;
+}
+
+.animated-card-image {
+    animation: fadeIn 1s;
+}
+
+.pack{
+    display:flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}

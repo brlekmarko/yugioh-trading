@@ -7,7 +7,8 @@ function initialUsers(){
             hashedpass: "0856d1867dab0279ddaf07805a2d0a51ee77ab6c150999c720b3f46233ca854b498a5dd3a8615ec47880dd3dd6b910edf08effb2ec7f91baa405a0eb1ab62b27",
             salt: "ae6636058b37b064b660adf6ee5a50eb",
             admin: true,
-            last_pack_opening: "2023-11-13 22:27:52.034"
+            last_coin_claim: "2023-11-13 22:27:52.034",
+            coins: 10000
         },
         {
             username: "testuser",
@@ -16,7 +17,8 @@ function initialUsers(){
             hashedpass: "48bc07d7248d08853a59df6feaa43adba22274ccc79cc7609af35a1f46df6f913e6011201d3c73272a8fe21d660586a07e46f513f796e05c73fc45931ea4bfb2",
             salt: "354e14c6298315152f1f242e34a24d30",
             admin: false,
-            last_pack_opening: "2023-11-13 22:27:52.034"
+            last_coin_claim: "2023-11-13 22:27:52.034",
+            coins: 25000
         }
     ];
     return users;

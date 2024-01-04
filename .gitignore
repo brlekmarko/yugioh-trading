@@ -8,6 +8,8 @@
 /server/.envProd
 /server/test.env
 /server/prod.env
+/server/server.log
+/server/error.log
 /.pnp
 .pnp.js
 

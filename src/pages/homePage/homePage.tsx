@@ -12,6 +12,7 @@ import { Card, CardFromOffer } from "../../interfaces/card";
 import { Dialog } from "primereact/dialog";
 import { MultiSelect } from "primereact/multiselect";
 import './homePage.css';
+import { claimCoins } from "../../apiCalls/coinsApi";
 
 export default function HomePage() {
 
@@ -43,7 +44,7 @@ export default function HomePage() {
         // check if 12 hours have passed
         let timeServer = await fetchTimeOnServer();
         let time = new Date(timeServer);
-        let lastOpened = new Date(user.last_pack_opening);
+        let lastOpened = new Date(user.last_coin_claim);
         let diff = time.getTime() - lastOpened.getTime();
         if(diff < 12 * 60 * 60 * 1000){
             alert("You can only open a pack every 12 hours");
@@ -55,6 +56,31 @@ export default function HomePage() {
             setNewCards(res.cards);
             setNewCardsVisible(true);
             setVisibleCards(new Array(res.cards.length).fill(false));
+        }
+        catch(e){
+            console.log(e);
+        }
+        
+    }
+
+    async function ClaimCoins() {
+        if(!user){
+            navigate('/login');
+            return;
+        }
+        // check if 12 hours have passed
+        let timeServer = await fetchTimeOnServer();
+        let time = new Date(timeServer);
+        let lastOpened = new Date(user.last_coin_claim);
+        let diff = time.getTime() - lastOpened.getTime();
+        if(diff < 12 * 60 * 60 * 1000){
+            alert("You can only claim coins every 12 hours");
+            return;
+        }
+
+        try{
+            let res = await claimCoins();
+            setUser({...user, coins: res.coins, last_coin_claim: res.last_coin_claim});
         }
         catch(e){
             console.log(e);
@@ -224,11 +250,11 @@ export default function HomePage() {
         // then set interval that updates remaining time
         async function fetchAll() {
             let timeServer = await fetchTimeOnServer();
-            let user = await fetchUser();
-            await fetchMyCards(user);
+            let fetchedUser = await fetchUser();
+            await fetchMyCards(fetchedUser);
             await fetchAllCards();
             await fetchTradeOffers();
-            let lastOpened = new Date(user.last_pack_opening);
+            let lastOpened = new Date(fetchedUser.last_coin_claim);
 
             // get difference between our time and time on server
             let timeZoneDiff = new Date().getTime() - new Date(timeServer).getTime();
@@ -239,16 +265,18 @@ export default function HomePage() {
                 let timeNow = new Date();
                 let diff = timeOfNextOpening.getTime() - timeNow.getTime();
                 if(diff < 0){
-                    setRemainingTime("Ready to open");
-                    return;
+                    setRemainingTime("Ready to claim");
+                    clearInterval(interval);
                 }
-                let hours = Math.floor(diff / (1000 * 60 * 60)) + "";
-                let minutes = Math.floor((diff / (1000 * 60)) % 60) + "";
-                let seconds = Math.floor((diff / 1000) % 60) + "";
-                if(hours.length === 1) hours = "0" + hours;
-                if(minutes.length === 1) minutes = "0" + minutes;
-                if(seconds.length === 1) seconds = "0" + seconds;
-                setRemainingTime(hours + ":" + minutes + ":" + seconds);
+                else{
+                    let hours = Math.floor(diff / (1000 * 60 * 60)) + "";
+                    let minutes = Math.floor((diff / (1000 * 60)) % 60) + "";
+                    let seconds = Math.floor((diff / 1000) % 60) + "";
+                    if(hours.length === 1) hours = "0" + hours;
+                    if(minutes.length === 1) minutes = "0" + minutes;
+                    if(seconds.length === 1) seconds = "0" + seconds;
+                    setRemainingTime(hours + ":" + minutes + ":" + seconds);
+                }
             }, 500);
 
             return () => clearInterval(interval);
@@ -259,14 +287,21 @@ export default function HomePage() {
         catch(e){
             console.log(e);
         }
-    }, []);
+    }, [user?.last_coin_claim]);
 
 
     return (
         <div className="HomePage">
+            {user && <>Balance: {user.coins}
+            <Button onClick={() => console.log("Buy Coins")}>+</Button></>
+            }
             <div className="pack-opening">
                 <Button label="Open pack" onClick={OpenPack} disabled={remainingTime !== "Ready to open"} />
                 {remainingTime && <p>Time until next pack opening: {remainingTime}</p>}
+            </div>
+            <div className="pack-opening">
+                <Button label="Claim Coins" onClick={ClaimCoins} disabled={remainingTime !== "Ready to claim"} />
+                {remainingTime && <p>Time until next reward: {remainingTime}</p>}
             </div>
             <div className="trade-offers">
                 <h1>Trade Offers</h1>

@@ -1,23 +1,23 @@
 /// CRUD for users
 
 function getAllUsers(){
-    return "SELECT username, first_name, last_name, hashedpass, salt, last_pack_opening, admin FROM USERS"
+    return "SELECT username, first_name, last_name, hashedpass, salt, last_coin_claim, admin, coins FROM USERS"
 }
 
 function getUser(username){
-    return "SELECT username, first_name, last_name, hashedpass, salt, last_pack_opening, admin FROM USERS WHERE username = '" + username + "'";
+    return "SELECT username, first_name, last_name, hashedpass, salt, last_coin_claim, admin, coins FROM USERS WHERE username = '" + username + "'";
 }
 
 function createUser(user){
-    return "INSERT INTO USERS (username, first_name, last_name, hashedpass, salt, last_pack_opening, admin) VALUES " + 
+    return "INSERT INTO USERS (username, first_name, last_name, hashedpass, salt, last_coin_claim, admin, coins) VALUES " + 
     "('" + user.username + "', '" + user.first_name + "', '" + user.last_name + "', '" + user.hashedpass + "', '" + 
-    user.salt + "', '" + user.last_pack_opening + "', '" + user.admin + "') RETURNING username;";
+    user.salt + "', '" + user.last_coin_claim + "', '" + user.admin + "', '" + user.coins + "') RETURNING username;";
 }
 
 function updateUser(user){
     return "UPDATE USERS SET first_name = '" + user.first_name + "', last_name = '" + user.last_name + "', hashedpass = '" + 
-    user.hashedpass + "', salt = '" + user.salt + "', last_pack_opening = '" + user.last_pack_opening + "', admin = '" + 
-    user.admin + "' WHERE username = '" + user.username + "'";
+    user.hashedpass + "', salt = '" + user.salt + "', last_coin_claim = '" + user.last_coin_claim + "', admin = '" + 
+    user.admin + "', coins = '" + user.coins + "' WHERE username = '" + user.username + "'";
 }
 
 function deleteUser(username){
@@ -38,6 +38,10 @@ function getCard(id){
 
 function getCardByName(name){
     return `SELECT id, name, type, description, image FROM CARDS WHERE name = $$${name}$$`;
+}
+
+function getCardsByCollectionAndType(collection, type){
+    return `SELECT id, name, type, description, image FROM CARDS WHERE collection = $$${collection}$$ AND type = $$${type}$$`;
 }
 
 function createCard(card){
@@ -173,6 +177,36 @@ function emptyDatabase(){
 }
 
 
+// CRUD for packs
+
+function getAllPacks(){
+    return "SELECT id, name, price, description, image, collection, type FROM PACKS"
+}
+
+function getPack(id){
+    return `SELECT id, name, price, description, image, collection, type FROM PACKS WHERE id = ${id}`;
+}
+
+function createPack(pack){
+    if (!Number.isInteger(pack.price)) {
+        price = parseInt(pack.price);
+        if (isNaN(price)) {
+            throw new Error('Price must be an integer');
+        }
+    }
+    return `INSERT INTO PACKS (name, price, description, image, collection, type) VALUES 
+    ($$${pack.name}$$, $$${pack.price}$$, $$${pack.description}$$, $$${pack.image}$$, $$${pack.collection}$$, $$${pack.type}$$) RETURNING id`;
+}
+
+function updatePack(pack){
+    return `UPDATE PACKS SET name = $$${pack.name}$$, price = $$${pack.price}$$, description = $$${pack.description}$$, image = $$${pack.image}$$, collection = $$${pack.collection}$$, type = $$${pack.type}$$ WHERE id = ${pack.id}`;
+}
+
+function deletePack(id){
+    return `DELETE FROM PACKS WHERE id = ${id}`;
+}
+
+
 module.exports = {
     getAllUsers,
     getUser,
@@ -182,6 +216,7 @@ module.exports = {
     getAllCards,
     getCard,
     getCardByName,
+    getCardsByCollectionAndType,
     createCard,
     updateCard,
     deleteCard,
@@ -204,5 +239,10 @@ module.exports = {
     createWantingCards,
     deleteTradeOffer,
     deleteAllTradeOffersFromUser,
-    emptyDatabase
+    emptyDatabase,
+    getAllPacks,
+    getPack,
+    createPack,
+    updatePack,
+    deletePack
 }
